@@ -1,5 +1,5 @@
 /* МЯУ offline assets. Version bumps should accompany future releases. */
-const CACHE = 'myau-pwa-v1-20261016';
+const CACHE = 'myau-pwa-v2-20261016';
 const PREFIX = 'myau-pwa-';
 const CORE = [
   "./",

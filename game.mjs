@@ -101,7 +101,7 @@ function start(){world=new World();state='playing';helpRemaining=3;helpMode=fals
 $('#start').addEventListener('click',start);
 function showOverlay(html){helpMode=false;refreshHelp();$('#overlay-content').innerHTML=html;$('#overlay').hidden=false;dragging=false;activePointer=null;}
 function pause(){if(state!=='playing')return;state='paused';hush();showOverlay('<span class="pill">КОТЫ ОТДЫХАЮТ</span><img class="end-cat" src="assets/cat-3.webp" alt="Кот отдыхает"><h2>Мяу-пауза</h2><p>Все коты на своих местах.</p><button class="primary" id="resume">Продолжить ↗</button>');$('#resume').onclick=resume;}
-function resume(){state='playing';$('#overlay').hidden=true;accumulator=0;lastTime=0;unlockAudio();}
+function resume(){state='playing';helpMode=false;refreshHelp();$('#overlay').hidden=true;accumulator=0;lastTime=0;unlockAudio();}
 $('#pause').onclick=()=>{if(state==='playing')pause();else if(state==='paused')resume();};
 $('#restart').onclick=()=>{if(state==='intro')return;const previous=state;state='confirm';hush();showOverlay('<span class="pill">НОВАЯ ПОПЫТКА</span><h2 style="margin-top:24px">Начать сначала?</h2><p>Текущие коты исчезнут.<br>Рекорд останется.</p><button class="primary" id="confirm-restart">Новая игра ↻</button><button class="secondary" id="cancel-restart">Вернуться</button>');$('#confirm-restart').onclick=start;$('#cancel-restart').onclick=()=>{if(previous==='over'||previous==='won'){state=previous;endScreen(previous==='won')}else resume();};};
 $('#sound').onclick=()=>{soundEnabled=!soundEnabled;save('meow-sound',soundEnabled);updateSound();if(soundEnabled)unlockAudio().then(()=>meow(current,true));else hush();};
