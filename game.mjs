@@ -68,10 +68,10 @@ $('#paw').onclick=()=>{
 function loadSprite(i){return new Promise(resolve=>{const im=new Image();rawImages[i]=im;im.onload=()=>{
   const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(im,0,0);
   // Chroma-key the black source background at render time; source textures stay intact.
-  if(i!==BOSS_LEVEL){const d=g.getImageData(0,0,c.width,c.height);
+  if(i!==BOSS_LEVEL&&i!==9){const d=g.getImageData(0,0,c.width,c.height);
   for(let p=0;p<d.data.length;p+=4){const value=Math.max(d.data[p],d.data[p+1],d.data[p+2]);d.data[p+3]=Math.min(255,Math.max(0,(value-12)*12));}
   g.putImageData(d,0,0);}sprites[i]=c;resolve(c);
-};im.onerror=()=>resolve(null);im.src=i===9?'assets/cat-9.webp':i===BOSS_LEVEL?'assets/cat-8.png':`assets/cat-${i}.webp`;});}
+};im.onerror=()=>resolve(null);im.src=i===9?'assets/cat-9.webp?v=4':i===BOSS_LEVEL?'assets/cat-8.png':`assets/cat-${i}.webp`;});}
 const assets=Promise.all([...NAMES.map((_,i)=>loadSprite(i)),loadSprite(9)]);
 function drawCat(level,x,y,r,angle=0,alpha=1,glow=false,kind=null){
   ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.globalAlpha=alpha;
