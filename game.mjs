@@ -8,7 +8,7 @@ const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let best=Math.max(0,Number(read('meow-best',0))||0), soundEnabled=read('meow-sound',true)!==false;
 let world=new World(), state='intro', aim=180, current=0, next=0, highest=0, lastDrop=-10, dragging=false, activePointer=null, helpRemaining=3, helpMode=false;
 let particles=[],rings=[],points=[],lastTime=0,accumulator=0,shake=0,lastScore=-1,toastTimer,seenMerge=false,finalClock=0,winCats=[],pausedFrom='playing';
-const coupleArt=new Image();coupleArt.src='assets/mur-pair.webp';
+const coupleArt=new Image();coupleArt.src='assets/mur-pair.webp?v=5';
 const sprites=[],rawImages=[],W=360,H=650;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const audioBytes=fetch('./assets/meow.wav').then(r=>{if(!r.ok)throw new Error('audio');return r.arrayBuffer()}).catch(()=>null);
@@ -110,7 +110,7 @@ $('#sound').onclick=()=>{soundEnabled=!soundEnabled;save('meow-sound',soundEnabl
 function endScreen(won){
   state=won?'won':'over';
   showOverlay(won
-    ? `<div class="boss-end"><span class="pill">СЕМЕЙНОЕ СЛИЯНИЕ</span><img class="boss-portrait mur-couple" src="assets/mur-pair.webp" alt="Камиллкачад и Демирчад вместе"><h2>АБСОЛЮТНЫЙ МУР</h2><div class="end-score">${world.score}</div><p>КАМИЛЛКАЧАД + ДЕМИРЧАД = МЯУ НАВСЕГДА!<br>Рекорд: ${best}</p><button class="primary" id="play-again">Ещё раз <span>↻</span></button></div>`
+    ? `<div class="boss-end"><span class="pill">СЕМЕЙНОЕ СЛИЯНИЕ</span><img class="boss-portrait mur-couple" src="assets/mur-pair.webp?v=5" alt="Камиллкачад и Демирчад вместе"><h2>АБСОЛЮТНЫЙ МУР</h2><div class="end-score">${world.score}</div><p>КАМИЛЛКАЧАД + ДЕМИРЧАД = МЯУ НАВСЕГДА!<br>Рекорд: ${best}</p><button class="primary" id="play-again">Ещё раз <span>↻</span></button></div>`
     : `<span class="pill">КОТОВ СЛИШКОМ МНОГО</span><div class="end-score">${world.score}</div><h2>Кошачий переполох.</h2><p>Твой кот: ${NAMES[highest]} · Рекорд: ${best}<br>Ещё одна попытка — ещё ниже мяу.</p><button class="primary" id="play-again">Ещё раз <span>↻</span></button>`);
   $('#play-again').onclick=start;
 }
