@@ -1,11 +1,11 @@
 /* МЯУ offline assets. Version bumps should accompany future releases. */
-const CACHE = 'myau-pwa-v2-20261016';
+const CACHE = 'myau-pwa-v3-20261017';
 const PREFIX = 'myau-pwa-';
 const CORE = [
   "./",
   "./index.html",
-  "./game.mjs?v=2",
-  "./physics.mjs?v=2",
+  "./game.mjs?v=3",
+  "./physics.mjs?v=3",
   "./style.css?v=2",
   "./pwa-register.js",
   "./manifest.webmanifest",
@@ -23,7 +23,9 @@ const CORE = [
   "./assets/cat-5.webp",
   "./assets/cat-6.webp",
   "./assets/cat-7.webp",
-  "./assets/cat-8.png"
+  "./assets/cat-8.png",
+  "./assets/cat-9.webp",
+  "./assets/mur-pair.webp"
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));

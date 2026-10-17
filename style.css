@@ -12,3 +12,7 @@
 /* Fit the 25% larger logical arena within the mobile viewport without cropping touch controls */
 @media(max-width:800px){.arena-wrap{min-width:230px;width:100%}}
 
+
+/* Joint final-boss heart portrait */
+.mur-end .mur-couple{height:clamp(140px,25dvh,225px);max-width:70vw;filter:drop-shadow(0 0 18px #ff68bc88)}
+.mur-end h2{color:#ffb3df;text-shadow:0 0 14px #ff69be88}
