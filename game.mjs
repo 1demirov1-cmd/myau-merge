@@ -1,4 +1,4 @@
-import {World,RADII,RATES} from './physics.mjs?v=4';
+import {World,RADII,RATES} from './physics.mjs?v=5';
 const $=s=>document.querySelector(s), canvas=$('#game'), ctx=canvas.getContext('2d');
 const NAMES=['Крошка','Бананчик','Серьёзный','Улыбашка','Батя','Гига-кот','Мегачад','Абсолют','Демирчад'];
 const BOSS_LEVEL=NAMES.length-1;

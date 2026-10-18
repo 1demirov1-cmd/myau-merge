@@ -108,8 +108,8 @@ assert.equal(merge.balls[0].level,1);
 assert.equal(merge.balls[0].mutation,undefined);
 assert.equal(merge.activeMutationCount(),0);
 
-// Phase 1 does not modify behavior: until activated by later implementation,
-// identical worlds with and without metadata produce the same physics.
+// Physics phase: heavy does not change gravitational acceleration in free-fall,
+// although it changes momentum sharing with other cats.
 const plain=new World(),decorated=new World();
 plain.add(0,90,100); decorated.add(0,90,100,{mutationType:'heavy'});
 for(let i=0;i<60;i++){plain.step(1/120);decorated.step(1/120);}
