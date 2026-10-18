@@ -1,8 +1,22 @@
+import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS} from './mutations.mjs';
 export const RADII = [18,25,33,42,53,61,72,84,98];
 export const RATES = [1.55,1.30,1.08,.90,.74,.61,.50,.40,.26];
 export class World {
   constructor({width=360,height=650,gravity=1050}={}){Object.assign(this,{width,height,gravity,balls:[],score:0,time:0,nextId:1,danger:0,over:false,won:false,events:[],bossProduced:0,murUntil:0,bond:null});}
-  add(level,x,y,extra={}){const r=RADII[level];const b={id:this.nextId++,level,r,x,y,vx:0,vy:0,angle:0,spin:0,born:this.time,lock:0,...extra};this.balls.push(b);return b;}
+  add(level,x,y,extra={}){
+    const {mutationType, ...ballExtra}=extra;
+    const mutation=mutationType != null ? createMutationState(mutationType) : null;
+    if(mutation){
+      if(!isMutationLevel(level)) throw new RangeError('Mutations are limited to levels 1–5');
+      if(countActiveMutations(this.balls)>=MAX_ACTIVE_MUTATIONS) throw new Error('Active mutation limit exceeded');
+    }
+    const r=RADII[level];
+    const b={id:this.nextId++,level,r,x,y,vx:0,vy:0,angle:0,spin:0,born:this.time,lock:0,...ballExtra};
+    if(mutation) b.mutation=mutation;
+    this.balls.push(b);
+    return b;
+  }
+  activeMutationCount(){return countActiveMutations(this.balls);}
   pair(){
     const a=this.balls.find(b=>b.level===8&&b.kind==='kamilla');
     const b=this.balls.find(b=>b.level===8&&b.kind==='demir');
