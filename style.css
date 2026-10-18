@@ -16,3 +16,9 @@
 /* Joint final-boss heart portrait */
 .mur-end .mur-couple{height:clamp(140px,25dvh,225px);max-width:70vw;filter:drop-shadow(0 0 18px #ff68bc88)}
 .mur-end h2{color:#ffb3df;text-shadow:0 0 14px #ff69be88}
+
+/* MYAU Mutations v1: legible preview and undo on small mobile screens */
+.mutation-next{position:absolute;right:5px;top:6px;min-width:21px;height:21px;padding:1px 3px;display:grid;place-items:center;border:1.6px solid #a3c5ef;background:#231b30;border-radius:50%;color:#f8edff;font-size:15px;line-height:1;font-weight:800;box-shadow:0 0 10px #b69cfb55}
+.mutation-next[hidden]{display:none}
+.icon-btn:disabled{opacity:.35;cursor:not-allowed}
+@media(max-width:390px){.actions{gap:4px}.topbar .brand{font-size:19px}.icon-btn{width:32px;height:34px}}
