@@ -2,12 +2,11 @@
 // Effects activate only on explicit mutation metadata.
 import {
   MUTATION_DEFINITIONS, activateMutation, advanceMutation,
-} from './mutations.mjs?v=2';
+} from './mutations.mjs?v=4';
 
 export const EFFECT_MAX_SPEED = 850;
 
 const cap = (value, limit = EFFECT_MAX_SPEED) => Math.max(-limit, Math.min(limit, value));
-const normalBall = ball => ball.level < 8 && (!ball.mutation || ball.mutation.phase === 'spent');
 
 export function isPhased(ball) {
   return ball.mutation?.type === 'ghost' && ball.mutation.phase === 'active';
@@ -47,15 +46,53 @@ function ninjaJump(world, ball) {
   const right = roomOnSide(world, ball, 1);
   const direction = Math.abs(left - right) < 1
     ? (world.random() < 0.5 ? -1 : 1) : (right > left ? 1 : -1);
-  // Use impulses, never teleport; reduce force if crowded or near the ceiling.
+  // Preserve the original impulse and its headroom guard; a 1.6x height
+  // requires sqrt(1.6)x takeoff velocity under the same gravity.
   const horizontalRoom = Math.max(left, right);
   const headroom = Math.max(0, ball.y - ball.r);
   const horizontal = Math.min(210, horizontalRoom * 3.5);
-  const vertical = Math.min(350, Math.sqrt(2 * world.gravity *
-    (3 * ball.r)) * Math.min(1, headroom / (3 * ball.r)));
+  const formerVertical = Math.min(350, Math.sqrt(2 * world.gravity * (3 * ball.r))) *
+    Math.min(1, headroom / (3 * ball.r));
+  const vertical = formerVertical * Math.sqrt(
+    MUTATION_DEFINITIONS.ninja.jumpHeightInDiameters / 1.5
+  );
   ball.vx = cap(ball.vx + direction * horizontal);
   ball.vy = cap(ball.vy - vertical);
+  // Cosmetic somersault, independent of collision-driven angular momentum.
+  ball.ninjaFlipStartedAt = world.time;
+  ball.ninjaFlipDuration = 0.65;
+  ball.ninjaFlipDirection = direction;
   world.events.push({type: 'mutation', mutation: 'ninja', stage:'jump', id: ball.id, x:ball.x, y:ball.y, r:ball.r});
+}
+
+// Return disjoint nearest pairs inside one active magnet's circle.
+// The magnet is a field generator, not an attraction target.
+export function getMagnetPairs(world, source) {
+  if (source.mutation?.type !== 'magnet' || source.mutation.phase !== 'active') return [];
+  const range = source.r * MUTATION_DEFINITIONS.magnet.rangeInRadii;
+  const nearby = world.balls.filter(ball =>
+    ball !== source && ball.level < 8 && !isPhased(ball) &&
+    !(ball.mutation?.type === 'magnet' && ball.mutation.phase === 'active') &&
+    Math.hypot(ball.x - source.x, ball.y - source.y) <= range
+  );
+  const candidates = [];
+  for (let i = 0; i < nearby.length; i++) {
+    for (let j = i + 1; j < nearby.length; j++) {
+      const a = nearby[i], b = nearby[j];
+      if (a.level !== b.level) continue;
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      if (dist > 0.001) candidates.push({a, b, dist, range});
+    }
+  }
+  candidates.sort((p, q) => p.dist - q.dist || p.a.id - q.a.id || p.b.id - q.b.id);
+  const used = new Set(), pairs = [];
+  for (const pair of candidates) {
+    if (used.has(pair.a.id) || used.has(pair.b.id)) continue;
+    used.add(pair.a.id);
+    used.add(pair.b.id);
+    pairs.push(pair);
+  }
+  return pairs;
 }
 
 export function startMutationTick(world, dt) {
@@ -67,20 +104,21 @@ export function startMutationTick(world, dt) {
       world.events.push({type:'mutation',mutation:state.type,stage:'start',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
     }
   }
-  // Only previously activated magnets pull. Do not move bosses or phased ghosts.
-  for (const source of world.balls) {
-    if (source.mutation?.type !== 'magnet' || source.mutation.phase !== 'active') continue;
-    for (const target of world.balls) {
-      if (target === source || target.level !== source.level || !normalBall(target) || isPhased(target)) continue;
-      const dx = source.x - target.x, dy = source.y - target.y;
-      const dist = Math.hypot(dx, dy);
-      const range = source.r * MUTATION_DEFINITIONS.magnet.rangeInRadii;
-      if (dist < 1 || dist > range) continue;
-      const proximity = 1 - dist / range;
-      const acceleration = 3200 * proximity;
-      target.vx = cap(target.vx + dx / dist * acceleration * dt);
-      target.vy = cap(target.vy + dy / dist * acceleration * dt);
-    }
+  // Any eligible level may pair inside the field; both partners must be inside.
+  // A ball participates in at most one pair even if several fields overlap.
+  const candidates = world.balls.flatMap(source => getMagnetPairs(world, source));
+  candidates.sort((p, q) => p.dist - q.dist || p.a.id - q.a.id || p.b.id - q.b.id);
+  const used = new Set();
+  for (const {a, b, dist, range} of candidates) {
+    if (used.has(a.id) || used.has(b.id)) continue;
+    used.add(a.id);
+    used.add(b.id);
+    const dx = (b.x - a.x) / dist, dy = (b.y - a.y) / dist;
+    const acceleration = 3200 * Math.max(0.4, 1 - dist / (2 * range));
+    a.vx = cap(a.vx + dx * acceleration * dt);
+    a.vy = cap(a.vy + dy * acceleration * dt);
+    b.vx = cap(b.vx - dx * acceleration * dt);
+    b.vy = cap(b.vy - dy * acceleration * dt);
   }
 }
 

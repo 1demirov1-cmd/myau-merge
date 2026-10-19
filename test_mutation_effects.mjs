@@ -42,20 +42,21 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} �
   step(w,150);assert.equal(w.events.filter(e=>e.mutation==='ninja').length,1);
   assert(w.events.length>=emitted);
 }
-// Магнит: arms on settling, pulls same-level ordinary cats but not other levels.
+// Магнит: same-level pairs attract even when the magnet has a different level.
 {
   const w=new World();
   const mag=w.add(2,90,650-RADII[2],{mutationType:'magnet'});
-  const matching=w.add(2,190,650-RADII[2]);
-  const foreign=w.add(1,305,650-RADII[1]);
+  const first=w.add(1,180,650-RADII[1]);
+  const second=w.add(1,300,650-RADII[1]);
+  const outsider=w.add(0,345,650-RADII[0]);
   step(w,1);assert.equal(mag.mutation.phase,'active');
   assert(w.events.some(e=>e.mutation==='magnet'&&e.stage==='start'));
-  const before=matching.x, foreignBefore=foreign.x;
+  const distance=Math.abs(first.x-second.x), outsiderX=outsider.x;
   step(w,35);
-  assert(matching.x<before-1,'magnet should attract same-level ordinary cat');
-  near(foreign.x,foreignBefore);
+  assert(!w.balls.includes(first)||!w.balls.includes(second)||Math.abs(first.x-second.x)<distance-1,
+    'magnet must attract same-level pairs within its field');
+  near(outsider.x,outsiderX);
   assert.equal(w.events.filter(e=>e.mutation==='magnet').length,1);
-  // A magnet can merge before its timer expires; test expiration on a separate isolated cat.
   const solo=new World();const soloMag=solo.add(2,90,650-RADII[2],{mutationType:'magnet'});
   step(solo,270);
   assert.equal(soloMag.mutation.phase,'spent');

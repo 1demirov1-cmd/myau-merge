@@ -1,6 +1,7 @@
-import {World,RADII,RATES} from './physics.mjs?v=10';
-import {rollMutation} from './mutations.mjs?v=3';
+import {World,RADII,RATES} from './physics.mjs?v=11';
+import {rollMutation} from './mutations.mjs?v=4';
 import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs?v=3';
+import {getMagnetPairs} from './mutation_effects.mjs?v=6';
 const $=s=>document.querySelector(s), canvas=$('#game'), ctx=canvas.getContext('2d');
 const NAMES=['Крошка','Бананчик','Серьёзный','Улыбашка','Батя','Гига-кот','Мегачад','Абсолют','Демирчад'];
 const BOSS_LEVEL=NAMES.length-1;
@@ -106,7 +107,7 @@ function snapshot(){return captureSnapshot(world,{state,pausedFrom,current,next,
 function persist(){if(!['playing','paused','finale'].includes(state))return;try{localStorage.setItem('myau-game-v1',encodeSave(snapshot(),undoSnapshot));lastSavedTime=world.time}catch{}}
 function clearSaved(){try{localStorage.removeItem('myau-game-v1')}catch{}}
 function applySnapshot(raw){const loaded=restoreSnapshot(raw,()=>new World({random:gameRandom}));if(!loaded)return false;world=loaded.world;({state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats}=loaded.ui);rngState=loaded.rngState;announcedMutations=new Set(loaded.ui.announcedMutations??[]);particles=[];rings=[];points=[];mutationLabels=[];shake=0;accumulator=0;lastTime=0;lastScore=-1;world.events.length=0;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();return true;}
-const MUTATION_UI={ghost:{symbol:'◌',color:'#a3c5ef',label:'Кот-призрак',detail:'1,5 с проходит сквозь котов'},heavy:{symbol:'▣',color:'#ffd08a',label:'Кот-жиробас',detail:'В 5 раз тяжелее обычного'},maniac:{symbol:'🔪',color:'#ff8097',label:'Кот-маньяк',detail:'При приземлении убирает одного кота другого уровня'},ninja:{symbol:'✦',color:'#c2a8ff',label:'Кот-ниндзя',detail:'Прыгает после приземления'},magnet:{symbol:'⊕',color:'#ffa5cf',label:'Котомагнит',detail:'Притягивает одинаковых котов с увеличенного расстояния'}};
+const MUTATION_UI={ghost:{symbol:'◌',color:'#a3c5ef',label:'Кот-призрак',detail:'1,5 с проходит сквозь котов'},heavy:{symbol:'▣',color:'#ffd08a',label:'Кот-жиробас',detail:'В 5 раз тяжелее обычного'},maniac:{symbol:'🔪',color:'#ff8097',label:'Кот-маньяк',detail:'При приземлении убирает одного кота другого уровня'},ninja:{symbol:'✦',color:'#c2a8ff',label:'Кот-ниндзя',detail:'Прыгает после приземления'},magnet:{symbol:'⊕',color:'#ffa5cf',label:'Котомагнит',detail:'Соединяет ближайших одинаковых котов внутри магнитного поля'}};
 $('#next-mutation').onclick=()=>{const m=nextMutation?MUTATION_UI[nextMutation]:null;if(m)toast(m.label+' · '+m.detail);};
 function updateHUD(){if(lastScore!==world.score){lastScore=world.score;$('#score').textContent=world.score;if(world.score>best){best=world.score;$('#best').textContent=best;save('meow-best',best);}}}
 function setHighest(level){if(level<=highest)return;highest=level;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;document.querySelectorAll('.cat-button').forEach((b,i)=>b.classList.toggle('active',i===highest));toast(`${NAMES[level]}! Мяу ещё ниже ↓`);}
@@ -183,7 +184,10 @@ function draw(){
 else for(const b of world.balls){
  const bonded=world.bond&&(b.id===world.bond.a||b.id===world.bond.b);
  const ghost=b.mutation?.type==='ghost'&&b.mutation.phase==='active';
-  drawCat(b.level,b.x,b.y,b.r*(bonded?1+.04*Math.sin(world.bond.elapsed*15):1),b.angle,ghost?.4:1,!!bonded,b.kind);
+  const flipTime=world.time-(b.ninjaFlipStartedAt??-Infinity);
+    const flip=flipTime>=0&&flipTime<(b.ninjaFlipDuration??0)
+      ?(b.ninjaFlipDirection??1)*Math.PI*2*(flipTime/b.ninjaFlipDuration):0;
+    drawCat(b.level,b.x,b.y,b.r*(bonded?1+.04*Math.sin(world.bond.elapsed*15):1),b.angle+flip,ghost?.4:1,!!bonded,b.kind);
   if(b.mutation&&b.mutation.phase!=='spent'){drawMutationAura(b);drawMutationBadge(b.x,b.y,b.r,b.mutation.type,ghost?.75:1);}
 }
   for(const ring of rings){const t=1-ring.life/ring.max;ctx.beginPath();ctx.arc(ring.x,ring.y,ring.r+t*(ring.spread??50),0,Math.PI*2);ctx.globalAlpha=(1-t)*.7;ctx.strokeStyle=ring.color;ctx.lineWidth=2-t;ctx.stroke();ctx.globalAlpha=1;}
@@ -213,19 +217,14 @@ function drawMutationAura(ball) {
   } else if(mutation.type==='magnet'&&active){
     ctx.globalAlpha=.25+.10*Math.sin(t*9);
     ctx.setLineDash([7,9]);ctx.lineDashOffset=-t*12;
-    ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(0,0,Math.min(r*7,180),0,Math.PI*2);ctx.stroke();
+    ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(0,0,r*7,0,Math.PI*2);ctx.stroke();
     ctx.globalAlpha=.6;ctx.setLineDash([]);ctx.beginPath();ctx.arc(0,0,r+13+4*Math.sin(t*8),0,Math.PI*2);ctx.stroke();
-    // Show actual targets, never invent attraction when no matching cat is nearby.
-    let shown=0;for(const target of world.balls){
-      if(shown>=5)break;
-      if(target===ball||target.level!==ball.level||
-         (target.mutation&&target.mutation.phase!=='spent'))continue;
-      const dx=target.x-ball.x,dy=target.y-ball.y;
-      if(Math.hypot(dx,dy)>r*7)continue;
+    // Lines connect actual equal-level pairs rather than pointing to the magnet.
+    for(const {a,b} of getMagnetPairs(world,ball).slice(0,5)){
       ctx.globalAlpha=.45+.18*Math.sin(t*12);ctx.strokeStyle=meta.color;ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(dx,dy);ctx.stroke();shown++;
+      ctx.beginPath();ctx.moveTo(a.x-ball.x,a.y-ball.y);ctx.lineTo(b.x-ball.x,b.y-ball.y);ctx.stroke();
     }
-  } else if(mutation.type==='maniac'){
+    } else if(mutation.type==='maniac'){
     ctx.globalAlpha=.85;ctx.lineWidth=2.7;ctx.beginPath();ctx.moveTo(-r*.4,r*.72);ctx.lineTo(r*.4,r*.72);ctx.stroke();
   } else if(mutation.type==='heavy'){
     ctx.globalAlpha=.85;ctx.lineWidth=3.2;

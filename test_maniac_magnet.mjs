@@ -38,12 +38,13 @@ let count=0;assert.equal(rollMutation({level:0,throwNumber:5,random:()=>count++=
  assert(w.balls.some(b=>b.id===other.id));assert.equal(killer.mutation.phase,'armed');
 }
 {
- const w=new World(),m=w.add(0,90,650-RADII[0],{mutationType:'magnet'});
- const far=w.add(0,210,650-RADII[0]);tick(w);
- assert.equal(m.mutation.phase,'active');
- const initial=far.x;steps(w,80);
- assert(far.x<initial-10,'magnet should pull across 120 units');
- const expiry=new World(),solo=expiry.add(0,90,650-RADII[0],{mutationType:'magnet'});steps(expiry,300);assert.equal(solo.mutation.phase,'spent');
+ const w=new World(),m=w.add(2,90,650-RADII[2],{mutationType:'magnet'});
+ const a=w.add(1,180,650-RADII[1]),b=w.add(1,300,650-RADII[1]);
+ tick(w);assert.equal(m.mutation.phase,'active');
+ const initial=Math.abs(a.x-b.x);steps(w,65);
+ assert(!w.balls.includes(a)||!w.balls.includes(b)||Math.abs(a.x-b.x)<initial-10,
+   'magnet should draw equal-level neighbors together independent of its own level');
+  const expiry=new World(),solo=expiry.add(0,90,650-RADII[0],{mutationType:'magnet'});steps(expiry,300);assert.equal(solo.mutation.phase,'spent');
 }
 {
  const w=new World();const killer=w.add(0,160,200,{mutationType:'maniac',vy:200,lock:2});

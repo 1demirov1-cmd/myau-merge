@@ -9,7 +9,7 @@ export const MUTATION_DEFINITIONS = Object.freeze({
   ghost: Object.freeze({weight: 20, trigger: 'drop', duration: 1.5}),
   heavy: Object.freeze({weight: 25, trigger: 'drop', duration: null, massMultiplier: 5}),
   maniac: Object.freeze({weight: 25, trigger: 'contact', duration: 0}),
-  ninja: Object.freeze({weight: 15, trigger: 'settled', duration: 0, jumpDelay: 0.4, jumpHeightInDiameters: 1.5}),
+  ninja: Object.freeze({weight: 15, trigger: 'settled', duration: 0, jumpDelay: 0.4, jumpHeightInDiameters: 2.4}),
   magnet: Object.freeze({weight: 15, trigger: 'settled', duration: 2, rangeInRadii: 7}),
 });
 export const MUTATION_TYPES = Object.freeze(Object.keys(MUTATION_DEFINITIONS).filter(type => MUTATION_DEFINITIONS[type].weight > 0));

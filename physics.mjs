@@ -1,5 +1,5 @@
-import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS, spendMutation} from './mutations.mjs?v=3';
-import {startMutationTick, finishMutationTick, registerImpact, registerTouchdown, isPhased, inverseMass} from './mutation_effects.mjs?v=5';
+import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS, spendMutation} from './mutations.mjs?v=4';
+import {startMutationTick, finishMutationTick, registerImpact, registerTouchdown, isPhased, inverseMass} from './mutation_effects.mjs?v=6';
 export const RADII = [18,25,33,42,53,61,72,84,98];
 export const RATES = [1.55,1.30,1.08,.90,.74,.61,.50,.40,.26];
 export class World {

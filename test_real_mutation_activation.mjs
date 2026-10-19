@@ -27,11 +27,12 @@ function run(type, makeWorld, seconds=4) {
 {
  const m=run('magnet',(w,type)=>{
   const source=w.add(1,150,43,{mutationType:type});
-  w.add(1,230,625);
+  w.add(0,230,632);
+  w.add(0,300,632);
   return source;
  });
  assert(m.events.some(e=>e.mutation==='magnet'&&e.stage==='start'),'Magnet did not activate');
- assert(m.w.events.some(e=>e.type==='merge')||m.w.balls.length===1,'Magnet did not pull same-level target into a merge');
+ assert(m.w.balls.length<3,'Magnet did not draw a different-level pair into a merge');
  console.log('MAGNET_REAL_DROP_PASS',m.w.balls.length,m.events.length);
 }
 console.log('REAL_DROPS_MUTATIONS_PASS');
