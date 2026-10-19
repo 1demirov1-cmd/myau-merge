@@ -12,8 +12,8 @@ assert.equal(FIRST_MUTATION_THROW, 5);
 assert.equal(MAX_ACTIVE_MUTATIONS, 3);
 assert.equal(MUTATION_DEFINITIONS.maniac.weight,25);
 assert.equal(MUTATION_DEFINITIONS.magnet.rangeInRadii,7);
-assert.deepEqual(MUTATION_TYPES, ['ghost','heavy','maniac','ninja','magnet']);
-assert.equal(MUTATION_TYPES.reduce((sum,t)=>sum+MUTATION_DEFINITIONS[t].weight,0),100);
+assert.deepEqual(MUTATION_TYPES, ['ghost','heavy','maniac','ninja','magnet','vampire']);
+assert.equal(MUTATION_TYPES.reduce((sum,t)=>sum+MUTATION_DEFINITIONS[t].weight,0),115);
 for(let i=0;i<=8;i++) assert.equal(isMutationLevel(i),i<=4);
 assert(!isMutationLevel(2.5));
 assert(!isMutationLevel(-1));
@@ -30,7 +30,7 @@ assert.equal(rollMutation({level:0,throwNumber:5,balls:[
 ],random:noRng}),null);
 assert.equal(rollMutation({level:0,throwNumber:5,random:()=>.1}),null);
 
-const cases=[['ghost',0],['heavy',.20],['maniac',.45],['ninja',.70],['magnet',.85]];
+const cases=[['ghost',0],['heavy',.20],['maniac',.45],['ninja',.70],['magnet',.80],['vampire',.95]];
 for(const [expected,pick] of cases) {
   const numbers=[.05,pick];let calls=0;
   const value=rollMutation({level:0,throwNumber:5,random:()=>numbers[calls++]});
@@ -53,7 +53,7 @@ for(let i=0;i<100000;i++){
 assert(mutated>9500&&mutated<10500,'10% rate '+mutated);
 for(const type of MUTATION_TYPES){
   const share=counts[type]/mutated;
-  assert(Math.abs(share-MUTATION_DEFINITIONS[type].weight/100)<.025,type+' distribution '+share);
+  assert(Math.abs(share-MUTATION_DEFINITIONS[type].weight/115)<.025,type+' distribution '+share);
 }
 
 // Pure, serializable state transitions and pause behavior.
@@ -122,4 +122,4 @@ for(const key of ['x','y','vx','vy','angle','spin','level']){
 assert.equal(rollMutation({level:8,throwNumber:999,random:noRng}),null);
 assert.equal(rollMutation({level:7,throwNumber:999,random:noRng}),null);
 assert.deepEqual(JSON.parse(JSON.stringify(started)),started);
-console.log('MYAU_MUTATIONS_PHASE1_PASS: 5 types, sampling, state lifecycle, caps, merges, unchanged physics; sample='+mutated);
+console.log('MYAU_MUTATIONS_PHASE1_PASS: 6 types, sampling, state lifecycle, caps, merges, unchanged physics; sample='+mutated);
