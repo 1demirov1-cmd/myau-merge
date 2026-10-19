@@ -1,5 +1,5 @@
 /* МЯУ offline assets. Version bumps should accompany future releases. */
-const CACHE = 'myau-pwa-v25-20261019';
+const CACHE = 'myau-pwa-v26-20261019';
 const PREFIX = 'myau-pwa-';
 const CORE = [
   "./",
@@ -63,14 +63,17 @@ self.addEventListener('fetch', event => {
     })());
     return;
   }
+  // Online-first for scripts and styles: never mix old PWA code with new HTML.
   event.respondWith((async () => {
-    const cached = await caches.match(req);
-    if (cached) return cached;
-    const live = await fetch(req);
-    if (live.ok) {
-      const cache = await caches.open(CACHE);
-      await cache.put(req, live.clone());
+    try {
+      const live = await fetch(req, {cache:'no-store'});
+      if (live.ok) {
+        const cache = await caches.open(CACHE);
+        await cache.put(req, live.clone());
+      }
+      return live;
+    } catch {
+      return (await caches.match(req)) || Response.error();
     }
-    return live;
   })());
 });
