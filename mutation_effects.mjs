@@ -1,7 +1,7 @@
 // Physical effects for МЯУ-МУТАЦИИ. Used only when a ball explicitly has mutation metadata.
 // Effects activate only on explicit mutation metadata.
 import {
-  MUTATION_DEFINITIONS, activateMutation, advanceMutation,
+  MUTATION_DEFINITIONS, activateMutation, advanceMutation, spendMutation,
 } from './mutations.mjs?v=4';
 
 export const EFFECT_MAX_SPEED = 850;
@@ -123,7 +123,7 @@ export function startMutationTick(world, dt) {
 }
 
 export function registerTouchdown(world,ball) {
-  if((ball.mutation?.type==='ninja'||ball.mutation?.type==='magnet')&&
+  if((ball.mutation?.type==='ninja'||ball.mutation?.type==='magnet'||ball.mutation?.type==='vampire')&&
     ball.mutation.phase==='armed' && !(ball.mutationSettle>0))ball.mutationSettle=0.00001;
 }
 
@@ -146,13 +146,33 @@ export function finishMutationTick(world, dt) {
         world.events.push({type:'mutation',mutation:'ghost',stage:'end',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
       }
       ball.mutation=next;
-    } else if (state.phase === 'armed' && (state.type === 'ninja' || state.type === 'magnet')) {
+    } else if (state.phase === 'armed' && (state.type === 'ninja' || state.type === 'magnet' || state.type === 'vampire')) {
       // A genuine touchdown starts the clock even if the cat keeps rolling or bouncing.
       if(!(ball.mutationSettle>0) && !isSettled(world,ball))continue;
       ball.mutationSettle=(ball.mutationSettle??0)+dt;
       if (state.type === 'ninja' && ball.mutationSettle >= MUTATION_DEFINITIONS.ninja.jumpDelay) {
         ball.mutation=activateMutation(state);
         ninjaJump(world,ball);
+      } else if (state.type === 'vampire' && ball.mutationSettle >= dt) {
+        const radius = ball.r * MUTATION_DEFINITIONS.vampire.rangeInRadii;
+        const target = world.balls.filter(b => b !== ball && b.level === ball.level + 1 &&
+          b.level < 8 && Math.hypot(b.x-ball.x,b.y-ball.y) <= radius)
+          .sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y) -
+            Math.hypot(b.x-ball.x,b.y-ball.y) || a.id-b.id)[0];
+        ball.mutation = spendMutation(state);
+        if (target) {
+          const level = target.level;
+          const x = (ball.x+target.x)/2, y = (ball.y+target.y)/2;
+          world.balls.splice(world.balls.indexOf(target),1);
+          world.balls.splice(world.balls.indexOf(ball),1);
+          const merged = world.add(level,x,y,{lock:world.time+.12});
+          merged.x = Math.max(merged.r,Math.min(world.width-merged.r,merged.x));
+          merged.y = Math.min(world.height-merged.r,merged.y);
+          const points = 2 ** (level+1);
+          world.score += points;
+          world.events.push({type:'mutation',mutation:'vampire',stage:'bite',x,y,r:ball.r});
+          world.events.push({type:'merge',x,y,level,points});
+        }
       } else if (state.type === 'magnet' && ball.mutationSettle >= dt) {
         ball.mutation=activateMutation(state);
         world.events.push({type:'mutation',mutation:'magnet',stage:'start',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
