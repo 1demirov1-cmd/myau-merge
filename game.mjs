@@ -1,4 +1,4 @@
-import {World,RADII,RATES} from './physics.mjs?v=12';
+import {World,RADII,RATES} from './physics.mjs?v=13';
 import {rollMutation} from './mutations.mjs?v=4';
 import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs?v=3';
 import {getMagnetPairs} from './mutation_effects.mjs?v=6';
@@ -135,7 +135,7 @@ function drop(){
  undoSnapshot=snapshot();
  const r=RADII[current],x=Math.max(r+2,Math.min(W-r-2,aim));
  const type=currentMutation&&world.activeMutationCount()<3?currentMutation:null;
- world.add(current,x,43,{angle:(gameRandom()-.5)*.12,...(type?{mutationType:type}:{})});
+ world.add(current,x,32,{angle:(gameRandom()-.5)*.12,...(type?{mutationType:type}:{})});
  if(type&&!announcedMutations.has(type)){announcedMutations.add(type);toast('ОСОБЫЙ КОТ: '+MUTATION_UI[type].label.toUpperCase());}
  throwCount++;lastDrop=world.time;meow(current,true);
  current=next;currentMutation=nextMutation;next=randomLevel();
@@ -171,14 +171,14 @@ function draw(){
   ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.clearRect(0,0,W,H);ctx.save();if(shake&&!reduced)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
   const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#17121d');bg.addColorStop(1,'#191622');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#c7acff0b';for(let x=16;x<W;x+=24)for(let y=130;y<H;y+=24){ctx.beginPath();ctx.arc(x,y,.7,0,Math.PI*2);ctx.fill();}
-  ctx.save();ctx.setLineDash([4,5]);ctx.strokeStyle=world.danger>0?'#ff8585':'#7e5d9555';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,105);ctx.lineTo(W-13,105);ctx.stroke();ctx.restore();ctx.fillStyle=world.danger>0?'#ffaaaa':'#8b6f9b';ctx.font='8px -apple-system, sans-serif';ctx.textAlign='right';ctx.fillText(world.danger>0?`ОСТОРОЖНО · ${Math.max(0,2-world.danger).toFixed(1)} c`:'НЕ ВЫШЕ ЭТОЙ ЛИНИИ',W-13,98);
+  ctx.save();ctx.setLineDash([4,5]);ctx.strokeStyle=world.danger>0?'#ff8585':'#7e5d9555';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(13,86);ctx.lineTo(W-13,86);ctx.stroke();ctx.restore();ctx.fillStyle=world.danger>0?'#ffaaaa':'#8b6f9b';ctx.font='8px -apple-system, sans-serif';ctx.textAlign='right';ctx.fillText(world.danger>0?`ОСТОРОЖНО · ${Math.max(0,2-world.danger).toFixed(1)} c`:'НЕ ВЫШЕ ЭТОЙ ЛИНИИ',W-13,79);
   if(!world.balls.length&&state==='playing'){ctx.textAlign='center';ctx.fillStyle='#665770';ctx.font='36px -apple-system,sans-serif';ctx.fillText('↓',180,264);ctx.font='12px -apple-system,sans-serif';ctx.fillStyle='#897792';ctx.fillText('Куда посадим первого?',180,295);ctx.font='10px -apple-system,sans-serif';ctx.fillStyle='#655771';ctx.fillText('Коснись поля и отпусти',180,315);}
-  const floor=ctx.createLinearGradient(0,0,W,0);floor.addColorStop(0,'#a984ff');floor.addColorStop(.45,'#e7b1d9');floor.addColorStop(1,'#b8e98d');ctx.strokeStyle=floor;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(1,110);ctx.lineTo(1,H-14);ctx.quadraticCurveTo(1,H-1,14,H-1);ctx.lineTo(W-14,H-1);ctx.quadraticCurveTo(W-1,H-1,W-1,H-14);ctx.lineTo(W-1,110);ctx.stroke();
+  const floor=ctx.createLinearGradient(0,0,W,0);floor.addColorStop(0,'#a984ff');floor.addColorStop(.45,'#e7b1d9');floor.addColorStop(1,'#b8e98d');ctx.strokeStyle=floor;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(1,90);ctx.lineTo(1,H-14);ctx.quadraticCurveTo(1,H-1,14,H-1);ctx.lineTo(W-14,H-1);ctx.quadraticCurveTo(W-1,H-1,W-1,H-14);ctx.lineTo(W-1,90);ctx.stroke();
   if(state==='playing'){
     const r=RADII[current],ready=world.time-lastDrop>.48;let target=H-r;
     for(const b of world.balls){const dx=aim-b.x;if(Math.abs(dx)<r+b.r){const y=b.y-Math.sqrt((r+b.r)**2-dx*dx);if(y<target)target=y;}}
-    target=Math.max(80,target);ctx.save();ctx.setLineDash([3,6]);ctx.strokeStyle='#c8b0eb40';ctx.beginPath();ctx.moveTo(aim,43+r);ctx.lineTo(aim,target);ctx.stroke();ctx.restore();if(dragging){ctx.strokeStyle='#c8b0eb40';ctx.beginPath();ctx.arc(aim,target,r,0,Math.PI*2);ctx.stroke();}drawCat(current,aim,43,r,0,ready?1:.35,true);drawMutationBadge(aim,43,r,currentMutation,ready?1:.35);
-    ctx.fillStyle='#b199c6';ctx.font='7px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(ready?'ОТПУСТИ ↓':'…',aim,43+r+14);
+    target=Math.max(62,target);ctx.save();ctx.setLineDash([3,6]);ctx.strokeStyle='#c8b0eb40';ctx.beginPath();ctx.moveTo(aim,32+r);ctx.lineTo(aim,target);ctx.stroke();ctx.restore();if(dragging){ctx.strokeStyle='#c8b0eb40';ctx.beginPath();ctx.arc(aim,target,r,0,Math.PI*2);ctx.stroke();}drawCat(current,aim,32,r,0,ready?1:.35,true);drawMutationBadge(aim,32,r,currentMutation,ready?1:.35);
+    ctx.fillStyle='#b199c6';ctx.font='7px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(ready?'ОТПУСТИ ↓':'…',aim,32+r+14);
   }
   if(state==='finale')drawVictoryHearts();
 else for(const b of world.balls){
@@ -194,7 +194,7 @@ else for(const b of world.balls){
   ctx.save();ctx.font='bold 10px -apple-system,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowBlur=6;ctx.shadowColor='#000';for(const m of mutationLabels){ctx.globalAlpha=Math.min(1,m.life*2);ctx.fillStyle=m.color;ctx.fillText(m.text,m.x,m.y-(1-m.life/m.max)*18,Math.min(300,W-12));}ctx.restore();
   for(const p of particles){ctx.globalAlpha=Math.min(1,p.life*2);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,1.7,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;
   ctx.font='bold 17px -apple-system,sans-serif';ctx.textAlign='center';for(const p of points){ctx.globalAlpha=Math.min(1,p.life*2);ctx.fillStyle='#e5f9c1';ctx.fillText(p.text,p.x,p.y);}ctx.globalAlpha=1;
-  if(world.danger>0){ctx.fillStyle=`rgba(255,100,120,${world.danger*.045})`;ctx.fillRect(0,0,W,110);}
+  if(world.danger>0){ctx.fillStyle=`rgba(255,100,120,${world.danger*.045})`;ctx.fillRect(0,0,W,90);}
   ctx.restore();
 }
 // Strong, sustained visual feedback: a rare mutation must be obvious while it acts.

@@ -127,7 +127,7 @@ export class World {
       for(const b of this.balls){if(b.x<b.r){registerImpact(this,b,Math.max(0,-b.vx));b.x=b.r;b.vx=Math.abs(b.vx)*.25;}if(b.x>this.width-b.r){registerImpact(this,b,Math.max(0,b.vx));b.x=this.width-b.r;b.vx=-Math.abs(b.vx)*.25;}if(b.y>this.height-b.r){registerTouchdown(this,b);registerImpact(this,b,Math.max(0,b.vy));b.y=this.height-b.r;b.vy=b.vy>70?-b.vy*.12:0;b.vx*=.98;b.spin*=.94;}}
     }
     finishMutationTick(this,dt);
-    const crowded=this.balls.some(b=>this.time-b.born>2.5&&b.y-b.r<105);
+    const crowded=this.balls.some(b=>this.time-b.born>2.5&&b.y-b.r<86);
     this.danger=crowded?this.danger+dt:Math.max(0,this.danger-dt*2);
     if(this.danger>2){this.over=true;this.events.push({type:'over'});}
   }
