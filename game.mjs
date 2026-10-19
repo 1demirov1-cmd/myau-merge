@@ -1,4 +1,4 @@
-import {World,RADII,RATES} from './physics.mjs?v=11';
+import {World,RADII,RATES} from './physics.mjs?v=12';
 import {rollMutation} from './mutations.mjs?v=4';
 import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs?v=3';
 import {getMagnetPairs} from './mutation_effects.mjs?v=6';

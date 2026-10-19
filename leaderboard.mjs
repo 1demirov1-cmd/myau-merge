@@ -48,13 +48,31 @@ async function show(){
  if(!r.data?.length)msg('Пока нет игроков. Стань первым!');
 }
 $('#rank-open').addEventListener('click',show);
+const skip=$('#rank-skip');
+function applySkip(){
+ const checked=skip.checked;
+ $('#rank-nick').disabled=checked;
+ $('#rank-save').disabled=checked;
+ if(checked){
+  localStorage.setItem('myau-rank-choice','skip');
+  modal.hidden=true;
+  msg('Без ника: участие в рейтинге отключено');
+ }else{
+  localStorage.removeItem('myau-rank-choice');
+  msg('Введи ник для участия в рейтинге');
+ }
+}
+skip.addEventListener('change',applySkip);
+
 $('#rank-close').addEventListener('click',()=>modal.hidden=true);
 modal.addEventListener('click',e=>{if(e.target===modal)modal.hidden=true});
 $('#rank-save').addEventListener('click',async()=>{
  const n=clean($('#rank-nick').value);
  if(n.length<2){msg('Ник должен содержать от 2 до 20 символов');return}
- nick=n;localStorage.setItem('myau-nickname',n);
+ nick=n;localStorage.setItem('myau-nickname',n);localStorage.setItem('myau-rank-choice','joined');
  await sync();await show();
 });
 window.addEventListener('myau-best-updated',()=>{if(client&&nick)sync()});
 if(localStorage.getItem('myau-nickname'))init();
+else if(localStorage.getItem('myau-rank-choice')==='skip'){skip.checked=true;$('#rank-nick').disabled=true;$('#rank-save').disabled=true;}
+else {modal.hidden=false;msg('Придумай ник для мирового ТОПа или выбери «Играть без ника»');}
