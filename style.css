@@ -22,3 +22,12 @@
 .mutation-next[hidden]{display:none}
 .icon-btn:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:390px){.actions{gap:4px}.topbar .brand{font-size:19px}.icon-btn{width:32px;height:34px}}
+
+/* World leaderboard */
+.rank-open{display:block;margin-top:3px;padding:2px 4px;border:0;background:transparent;color:#cbb2f8;font-size:11px;font-weight:700;cursor:pointer;text-align:left}
+.rank-modal[hidden]{display:none!important}
+.rank-modal{position:fixed;inset:0;z-index:10000;background:#09060ddc;display:flex;align-items:center;justify-content:center;padding:14px}
+.rank-panel{width:min(460px,100%);max-height:88dvh;display:flex;flex-direction:column;gap:12px;background:#201727;color:#eee4ff;border:1px solid #70568e;border-radius:20px;padding:18px;box-shadow:0 15px 70px #000b}
+.rank-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.rank-head h2{font-size:19px;margin:0}.rank-head button{background:transparent;border:0;color:inherit;font-size:24px;cursor:pointer}
+.rank-profile{display:flex;gap:7px}.rank-profile input{flex:1;min-width:0;border:1px solid #755b91;border-radius:9px;background:#130f1b;color:#fff;padding:10px;font-size:14px}.rank-profile button{border:0;border-radius:9px;background:#a885dd;color:#171020;padding:8px;font-weight:700;cursor:pointer}
+#rank-status{font-size:12px;color:#d6c4e6;margin:0}.rank-scroll{overflow:auto;min-height:100px}.rank-panel table{width:100%;border-collapse:collapse;font-size:14px}.rank-panel th{text-align:left;color:#bfa5d9;font-size:11px;padding:9px 5px}.rank-panel td{border-top:1px solid #ffffff16;padding:9px 5px}.rank-panel td:last-child{text-align:right;font-variant-numeric:tabular-nums}.rank-panel .mine{background:#61407988}
