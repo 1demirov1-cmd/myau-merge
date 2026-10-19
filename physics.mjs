@@ -1,5 +1,5 @@
 import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS} from './mutations.mjs';
-import {startMutationTick, finishMutationTick, registerImpact, isPhased, inverseMass} from './mutation_effects.mjs?v=2';
+import {startMutationTick, finishMutationTick, registerImpact, registerTouchdown, isPhased, inverseMass} from './mutation_effects.mjs?v=3';
 export const RADII = [18,25,33,42,53,61,72,84,98];
 export const RATES = [1.55,1.30,1.08,.90,.74,.61,.50,.40,.26];
 export class World {
@@ -62,6 +62,8 @@ export class World {
         for(let j=i+1;j<this.balls.length;j++){
           const b=this.balls[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);const min=a.r+b.r;
           if(d>min+.2 || isPhased(a) || isPhased(b))continue;
+          if(dy>0 && a.vy>=b.vy-20)registerTouchdown(this,a);
+          if(dy<0 && b.vy>=a.vy-20)registerTouchdown(this,b);
           if(a.level===8&&b.level===8&&a.kind!==b.kind&&
              ['kamilla','demir'].includes(a.kind)&&['kamilla','demir'].includes(b.kind)&&
              this.time>=a.lock&&this.time>=b.lock){
@@ -71,6 +73,9 @@ export class World {
           }
           if(a.level===b.level&&a.level<8&&this.time>=a.lock&&this.time>=b.lock){
             const x=(a.x+b.x)/2,y=(a.y+b.y)/2,level=a.level+1;
+            // A spring merging on contact must not disappear before its one-time burst.
+            if(a.mutation?.type==='spring')registerImpact(this,a,100);
+            if(b.mutation?.type==='spring')registerImpact(this,b,100);
             this.balls.splice(j,1);this.balls.splice(i,1);
 
             const points=2**(level+1);this.score+=points;
@@ -105,7 +110,7 @@ export class World {
         }
         if(merged)break;
       }
-      for(const b of this.balls){if(b.x<b.r){registerImpact(this,b,Math.max(0,-b.vx));b.x=b.r;b.vx=Math.abs(b.vx)*.25;}if(b.x>this.width-b.r){registerImpact(this,b,Math.max(0,b.vx));b.x=this.width-b.r;b.vx=-Math.abs(b.vx)*.25;}if(b.y>this.height-b.r){registerImpact(this,b,Math.max(0,b.vy));b.y=this.height-b.r;b.vy=b.vy>70?-b.vy*.12:0;b.vx*=.98;b.spin*=.94;}}
+      for(const b of this.balls){if(b.x<b.r){registerImpact(this,b,Math.max(0,-b.vx));b.x=b.r;b.vx=Math.abs(b.vx)*.25;}if(b.x>this.width-b.r){registerImpact(this,b,Math.max(0,b.vx));b.x=this.width-b.r;b.vx=-Math.abs(b.vx)*.25;}if(b.y>this.height-b.r){registerTouchdown(this,b);registerImpact(this,b,Math.max(0,b.vy));b.y=this.height-b.r;b.vy=b.vy>70?-b.vy*.12:0;b.vx*=.98;b.spin*=.94;}}
     }
     finishMutationTick(this,dt);
     const crowded=this.balls.some(b=>this.time-b.born>1.8&&b.y-b.r<105&&Math.abs(b.vy)<45);

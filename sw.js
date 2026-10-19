@@ -1,12 +1,12 @@
 /* МЯУ offline assets. Version bumps should accompany future releases. */
-const CACHE = 'myau-pwa-v9-20261019';
+const CACHE = 'myau-pwa-v10-20261019';
 const PREFIX = 'myau-pwa-';
 const CORE = [
   "./",
   "./index.html",
-  "./game.mjs?v=9",
-  "./physics.mjs?v=7",
-  "./mutation_effects.mjs?v=2",
+  "./game.mjs?v=10",
+  "./physics.mjs?v=8",
+  "./mutation_effects.mjs?v=3",
   "./game_state.mjs",
   "./mutations.mjs",
   "./style.css?v=3",

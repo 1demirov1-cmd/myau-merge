@@ -51,8 +51,8 @@ function ninjaJump(world, ball) {
   // Use impulses, never teleport; reduce force if crowded or near the ceiling.
   const horizontalRoom = Math.max(left, right);
   const headroom = Math.max(0, ball.y - ball.r);
-  const horizontal = Math.min(175, horizontalRoom * 3);
-  const vertical = Math.min(260, Math.sqrt(2 * world.gravity *
+  const horizontal = Math.min(210, horizontalRoom * 3.5);
+  const vertical = Math.min(350, Math.sqrt(2 * world.gravity *
     (3 * ball.r)) * Math.min(1, headroom / (3 * ball.r)));
   ball.vx = cap(ball.vx + direction * horizontal);
   ball.vy = cap(ball.vy - vertical);
@@ -78,11 +78,16 @@ export function startMutationTick(world, dt) {
       const range = source.r * MUTATION_DEFINITIONS.magnet.rangeInRadii;
       if (dist < 1 || dist > range) continue;
       const proximity = 1 - dist / range;
-      const acceleration = 420 * proximity;
+      const acceleration = 1800 * proximity;
       target.vx = cap(target.vx + dx / dist * acceleration * dt);
       target.vy = cap(target.vy + dy / dist * acceleration * dt);
     }
   }
+}
+
+export function registerTouchdown(world,ball) {
+  if((ball.mutation?.type==='ninja'||ball.mutation?.type==='magnet')&&
+    ball.mutation.phase==='armed' && !(ball.mutationSettle>0))ball.mutationSettle=0.00001;
 }
 
 export function registerImpact(world, ball, speed) {
@@ -99,6 +104,9 @@ export function registerImpact(world, ball, speed) {
 }
 
 function applyPulse(world, pulse) {
+  // A lone spring visibly rebounds rather than silently consuming its charge.
+  const spring=world.balls.find(b=>b.id===pulse.id);
+  if(spring && spring.level<8) spring.vy=Math.min(spring.vy,-230);
   const range = pulse.r * MUTATION_DEFINITIONS.spring.rangeInRadii;
   for (const ball of world.balls) {
     if (ball.id === pulse.id || ball.level >= 8 || isPhased(ball)) continue;
@@ -129,7 +137,8 @@ export function finishMutationTick(world, dt) {
       }
       ball.mutation=next;
     } else if (state.phase === 'armed' && (state.type === 'ninja' || state.type === 'magnet')) {
-      if (!isSettled(world,ball)) { ball.mutationSettle=0; continue; }
+      // A genuine touchdown starts the clock even if the cat keeps rolling or bouncing.
+      if(!(ball.mutationSettle>0) && !isSettled(world,ball))continue;
       ball.mutationSettle=(ball.mutationSettle??0)+dt;
       if (state.type === 'ninja' && ball.mutationSettle >= MUTATION_DEFINITIONS.ninja.jumpDelay) {
         ball.mutation=activateMutation(state);

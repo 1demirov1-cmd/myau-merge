@@ -1,4 +1,4 @@
-import {World,RADII,RATES} from './physics.mjs?v=7';
+import {World,RADII,RATES} from './physics.mjs?v=8';
 import {rollMutation} from './mutations.mjs';
 import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs';
 const $=s=>document.querySelector(s), canvas=$('#game'), ctx=canvas.getContext('2d');
@@ -10,7 +10,7 @@ const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let best=Math.max(0,Number(read('meow-best',0))||0), soundEnabled=read('meow-sound',true)!==false;
 let world=new World(), state='intro', aim=180, current=0, next=0, highest=0, lastDrop=-10, dragging=false, activePointer=null, helpRemaining=3, helpMode=false;
 let throwCount=0,currentMutation=null,nextMutation=null,undoSnapshot=null,lastSavedTime=0,rngState=0x9e3779b9;
-let particles=[],rings=[],points=[],lastTime=0,accumulator=0,shake=0,lastScore=-1,toastTimer,seenMerge=false,finalClock=0,winCats=[],pausedFrom='playing';
+let particles=[],rings=[],points=[],mutationLabels=[],lastTime=0,accumulator=0,shake=0,lastScore=-1,toastTimer,seenMerge=false,finalClock=0,winCats=[],pausedFrom='playing';
 const coupleArt=new Image();coupleArt.src='assets/mur-pair.webp?v=5';
 const sprites=[],rawImages=[],W=360,H=650;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -105,13 +105,13 @@ function refreshUndo(){$('#undo').disabled=!(state==='playing'&&undoSnapshot&&!w
 function snapshot(){return captureSnapshot(world,{state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats},rngState)}
 function persist(){if(!['playing','paused','finale'].includes(state))return;try{localStorage.setItem('myau-game-v1',encodeSave(snapshot(),undoSnapshot));lastSavedTime=world.time}catch{}}
 function clearSaved(){try{localStorage.removeItem('myau-game-v1')}catch{}}
-function applySnapshot(raw){const loaded=restoreSnapshot(raw,()=>new World({random:gameRandom}));if(!loaded)return false;world=loaded.world;({state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats}=loaded.ui);rngState=loaded.rngState;particles=[];rings=[];points=[];shake=0;accumulator=0;lastTime=0;lastScore=-1;world.events.length=0;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();return true;}
+function applySnapshot(raw){const loaded=restoreSnapshot(raw,()=>new World({random:gameRandom}));if(!loaded)return false;world=loaded.world;({state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats}=loaded.ui);rngState=loaded.rngState;particles=[];rings=[];points=[];mutationLabels=[];shake=0;accumulator=0;lastTime=0;lastScore=-1;world.events.length=0;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();return true;}
 const MUTATION_UI={ghost:{symbol:'◌',color:'#a3c5ef',label:'Кот-призрак',detail:'1,5 с проходит сквозь котов'},heavy:{symbol:'▣',color:'#ffd08a',label:'Кот-жиробас',detail:'В 5 раз тяжелее обычного'},spring:{symbol:'↟',color:'#83e3c6',label:'Кот-пружина',detail:'От сильного удара разбрасывает котов'},ninja:{symbol:'✦',color:'#c2a8ff',label:'Кот-ниндзя',detail:'Прыгает после приземления'},magnet:{symbol:'⊕',color:'#ffa5cf',label:'Котомагнит',detail:'Притягивает котов своего размера'}};
 $('#next-mutation').onclick=()=>{const m=nextMutation?MUTATION_UI[nextMutation]:null;if(m)toast(m.label+' · '+m.detail);};
 function updateHUD(){if(lastScore!==world.score){lastScore=world.score;$('#score').textContent=world.score;if(world.score>best){best=world.score;$('#best').textContent=best;save('meow-best',best);}}}
 function setHighest(level){if(level<=highest)return;highest=level;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;document.querySelectorAll('.cat-button').forEach((b,i)=>b.classList.toggle('active',i===highest));toast(`${NAMES[level]}! Мяу ещё ниже ↓`);}
 function toast(text){const el=$('#toast');el.textContent=text;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1900);}
-function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;$('#hint').innerHTML='<span class="hint-dot"></span> Веди пальцем и отпусти кота';rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio();}
+function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];mutationLabels=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;$('#hint').innerHTML='<span class="hint-dot"></span> Веди пальцем и отпусти кота';rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio();}
 $('#start').addEventListener('click',start);
 function undoDrop(){if(state!=='playing'||!undoSnapshot||world.bond)return;const before=undoSnapshot;undoSnapshot=null;if(!applySnapshot(before))return;state='playing';refreshUndo();toast('Последний бросок отменён');persist();}
 $('#undo').onclick=undoDrop;
@@ -153,7 +153,7 @@ window.addEventListener('keydown',e=>{if(e.target.closest?.('button,a,input'))re
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause();if(document.hidden)persist();});
 window.addEventListener('pagehide',()=>persist());
 function mutationSound(type){if(!soundEnabled||!audioCtx||audioCtx.state!=='running')return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type==='heavy'?'triangle':'sine';o.frequency.setValueAtTime(type==='spring'?680:type==='ninja'?750:type==='magnet'?430:360,t);o.frequency.exponentialRampToValueAtTime(type==='spring'?320:type==='ninja'?950:type==='magnet'?600:240,t+.16);g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.11,t+.025);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.connect(g);g.connect(master);o.start(t);o.stop(t+.23);}catch{}}
-function handleEvents(){for(const e of world.events){if(e.type==='mutation'){const meta=MUTATION_UI[e.mutation];if(meta){mutationSound(e.mutation);const isImpact=e.stage==='impact',isEnd=e.stage==='end';const msg=e.mutation==='spring'?'ПРУЖИНА! БУМ!':e.mutation==='ninja'?'НИНДЗЯ! ПРЫЖОК!':e.mutation==='magnet'?'МАГНИТ! ПРИТЯЖЕНИЕ!':e.mutation==='heavy'?(isImpact?'ЖИРОБАС! МОЩНЫЙ УДАР!':'ЖИРОБАС! МАССА ×5'):isEnd?'ПРИЗРАК МАТЕРИАЛИЗОВАЛСЯ':'ПРИЗРАК! ПРОХОД СКВОЗЬ КОТОВ';toast(msg);if(!reduced){const radius=e.mutation==='spring'?(e.r??24)*3:e.mutation==='magnet'?(e.r??24)*4:(e.r??24)+4;rings.push({x:e.x,y:e.y,r:radius,life:isImpact?.48:.9,max:isImpact?.48:.9,color:meta.color,spread:e.mutation==='spring'?12:35});if(isImpact||e.mutation==='spring')shake=Math.max(shake,2.6);}}}if(e.type==='bond'){refreshHelp();refreshUndo();toast('ЧАДОСЛИЯНИЕ: 1,5 СЕКУНДЫ');}if(e.type==='mur'){toast('МУР-ИМПУЛЬС!');}if(e.type==='merge'||e.type==='win'||e.type==='mur'){
+function handleEvents(){for(const e of world.events){if(e.type==='mutation'){const meta=MUTATION_UI[e.mutation];if(meta){mutationSound(e.mutation);const isImpact=e.stage==='impact',isEnd=e.stage==='end';const msg=e.mutation==='spring'?'ПРУЖИНА! БУМ!':e.mutation==='ninja'?'НИНДЗЯ! ПРЫЖОК!':e.mutation==='magnet'?'МАГНИТ! ПРИТЯЖЕНИЕ!':e.mutation==='heavy'?(isImpact?'ЖИРОБАС! МОЩНЫЙ УДАР!':'ЖИРОБАС! МАССА ×5'):isEnd?'ПРИЗРАК МАТЕРИАЛИЗОВАЛСЯ':'ПРИЗРАК! ПРОХОД СКВОЗЬ КОТОВ';toast(msg);mutationLabels.push({x:e.x,y:e.y-(e.r??18)-14,text:msg,life:1.2,max:1.2,color:meta.color});if(!reduced){const radius=e.mutation==='spring'?(e.r??24):e.mutation==='magnet'?(e.r??24)*4:(e.r??24)+4;rings.push({x:e.x,y:e.y,r:radius,life:isImpact?.48:.9,max:isImpact?.48:.9,color:meta.color,spread:e.mutation==='spring'?(e.r??24)*2:35});if(isImpact||e.mutation==='spring')shake=Math.max(shake,2.6);}}}if(e.type==='bond'){refreshHelp();refreshUndo();toast('ЧАДОСЛИЯНИЕ: 1,5 СЕКУНДЫ');}if(e.type==='mur'){toast('МУР-ИМПУЛЬС!');}if(e.type==='merge'||e.type==='win'||e.type==='mur'){
   meow(e.level);if(e.type==='merge')setHighest(e.level);if(e.kind)toast(e.kind==='kamilla'?'КАМИЛЛКАЧАД!':'ДЕМИРЧАД!');if(!reduced){shake=Math.min(4,1+e.level*.35);rings.push({x:e.x,y:e.y,r:RADII[e.level],life:.7,max:.7,color:COLORS[e.level]});for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=35+Math.random()*90;particles.push({x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.4,color:COLORS[e.level]});}}
   points.push({x:e.x,y:e.y-RADII[e.level],life:1,text:`+${e.points??2048}`});if(!seenMerge){seenMerge=true;$('#hint').innerHTML='<span class="hint-dot"></span> Больше кот → ниже мяу';}
 }if(e.type==='over')endScreen(false);
@@ -163,7 +163,7 @@ if(e.type==='win'){
  $('#hint').innerHTML='<span class="hint-dot"></span> АБСОЛЮТНЫЙ МУР';
 }
 }world.events.length=0;updateHUD();}
-function updateFX(dt){particles=particles.filter(p=>(p.life-=dt)>0);for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=120*dt;}rings=rings.filter(p=>(p.life-=dt)>0);points=points.filter(p=>(p.life-=dt)>0);for(const p of points)p.y-=dt*25;shake=Math.max(0,shake-dt*15);}
+function updateFX(dt){mutationLabels=mutationLabels.filter(p=>(p.life-=dt)>0);particles=particles.filter(p=>(p.life-=dt)>0);for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=120*dt;}rings=rings.filter(p=>(p.life-=dt)>0);points=points.filter(p=>(p.life-=dt)>0);for(const p of points)p.y-=dt*25;shake=Math.max(0,shake-dt*15);}
 function draw(){
   const dpr=Math.min(devicePixelRatio||1,2),rect=canvas.getBoundingClientRect(),px=Math.round(rect.width*dpr),py=Math.round(rect.height*dpr);
   if(canvas.width!==px||canvas.height!==py){canvas.width=px;canvas.height=py;}
@@ -187,6 +187,7 @@ else for(const b of world.balls){
   if(b.mutation&&b.mutation.phase!=='spent'){drawMutationAura(b);drawMutationBadge(b.x,b.y,b.r,b.mutation.type,ghost?.75:1);}
 }
   for(const ring of rings){const t=1-ring.life/ring.max;ctx.beginPath();ctx.arc(ring.x,ring.y,ring.r+t*(ring.spread??50),0,Math.PI*2);ctx.globalAlpha=(1-t)*.7;ctx.strokeStyle=ring.color;ctx.lineWidth=2-t;ctx.stroke();ctx.globalAlpha=1;}
+  ctx.save();ctx.font='bold 10px -apple-system,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowBlur=6;ctx.shadowColor='#000';for(const m of mutationLabels){ctx.globalAlpha=Math.min(1,m.life*2);ctx.fillStyle=m.color;ctx.fillText(m.text,m.x,m.y-(1-m.life/m.max)*18,Math.min(300,W-12));}ctx.restore();
   for(const p of particles){ctx.globalAlpha=Math.min(1,p.life*2);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,1.7,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;
   ctx.font='bold 17px -apple-system,sans-serif';ctx.textAlign='center';for(const p of points){ctx.globalAlpha=Math.min(1,p.life*2);ctx.fillStyle='#e5f9c1';ctx.fillText(p.text,p.x,p.y);}ctx.globalAlpha=1;
   if(world.danger>0){ctx.fillStyle=`rgba(255,100,120,${world.danger*.045})`;ctx.fillRect(0,0,W,110);}
@@ -214,6 +215,16 @@ function drawMutationAura(ball) {
     ctx.setLineDash([7,9]);ctx.lineDashOffset=-t*12;
     ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(0,0,Math.min(r*4,130),0,Math.PI*2);ctx.stroke();
     ctx.globalAlpha=.6;ctx.setLineDash([]);ctx.beginPath();ctx.arc(0,0,r+13+4*Math.sin(t*8),0,Math.PI*2);ctx.stroke();
+    // Show actual targets, never invent attraction when no matching cat is nearby.
+    let shown=0;for(const target of world.balls){
+      if(shown>=5)break;
+      if(target===ball||target.level!==ball.level||
+         (target.mutation&&target.mutation.phase!=='spent'))continue;
+      const dx=target.x-ball.x,dy=target.y-ball.y;
+      if(Math.hypot(dx,dy)>r*4)continue;
+      ctx.globalAlpha=.45+.18*Math.sin(t*12);ctx.strokeStyle=meta.color;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(dx,dy);ctx.stroke();shown++;
+    }
   } else if(mutation.type==='spring'&&mutation.phase==='armed'){
     ctx.globalAlpha=.65;ctx.beginPath();ctx.arc(0,0,r+9+2*Math.sin(t*10),0,Math.PI*2);ctx.stroke();
   } else if(mutation.type==='ninja'&&mutation.phase==='armed'){
