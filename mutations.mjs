@@ -1,4 +1,4 @@
-// МЯУ-МУТАЦИИ 1.0 — data model only. Abilities are not wired into gameplay yet.
+// МЯУ-МУТАЦИИ: active and legacy definitions. Spring is retained only for old saved games.
 export const MUTATION_CHANCE = 0.10;
 export const FIRST_MUTATION_THROW = 5; // 1-based drop number
 export const MAX_ACTIVE_MUTATIONS = 3;
@@ -8,11 +8,12 @@ export const MAX_MUTATION_LEVEL = 4; // user-facing levels 1–5
 export const MUTATION_DEFINITIONS = Object.freeze({
   ghost: Object.freeze({weight: 20, trigger: 'drop', duration: 1.5}),
   heavy: Object.freeze({weight: 25, trigger: 'drop', duration: null, massMultiplier: 5}),
-  spring: Object.freeze({weight: 25, trigger: 'impact', duration: 0, minImpactSpeed: 100, rangeInRadii: 3}),
+  maniac: Object.freeze({weight: 25, trigger: 'contact', duration: 0}),
+  spring: Object.freeze({weight: 0, trigger: 'impact', duration: 0, minImpactSpeed: 100, rangeInRadii: 3}),
   ninja: Object.freeze({weight: 15, trigger: 'settled', duration: 0, jumpDelay: 0.4, jumpHeightInDiameters: 1.5}),
-  magnet: Object.freeze({weight: 15, trigger: 'settled', duration: 2, rangeInRadii: 4}),
+  magnet: Object.freeze({weight: 15, trigger: 'settled', duration: 2, rangeInRadii: 7}),
 });
-export const MUTATION_TYPES = Object.freeze(Object.keys(MUTATION_DEFINITIONS));
+export const MUTATION_TYPES = Object.freeze(Object.keys(MUTATION_DEFINITIONS).filter(type => MUTATION_DEFINITIONS[type].weight > 0));
 const WEIGHT_TOTAL = MUTATION_TYPES.reduce((sum, type) => sum + MUTATION_DEFINITIONS[type].weight, 0);
 
 export function isMutationLevel(level) {

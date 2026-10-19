@@ -1,6 +1,6 @@
-import {World,RADII,RATES} from './physics.mjs?v=8';
-import {rollMutation} from './mutations.mjs';
-import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs';
+import {World,RADII,RATES} from './physics.mjs?v=9';
+import {rollMutation} from './mutations.mjs?v=2';
+import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs?v=2';
 const $=s=>document.querySelector(s), canvas=$('#game'), ctx=canvas.getContext('2d');
 const NAMES=['Крошка','Бананчик','Серьёзный','Улыбашка','Батя','Гига-кот','Мегачад','Абсолют','Демирчад'];
 const BOSS_LEVEL=NAMES.length-1;
@@ -9,7 +9,7 @@ const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{retur
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let best=Math.max(0,Number(read('meow-best',0))||0), soundEnabled=read('meow-sound',true)!==false;
 let world=new World(), state='intro', aim=180, current=0, next=0, highest=0, lastDrop=-10, dragging=false, activePointer=null, helpRemaining=3, helpMode=false;
-let throwCount=0,currentMutation=null,nextMutation=null,undoSnapshot=null,lastSavedTime=0,rngState=0x9e3779b9;
+let throwCount=0,currentMutation=null,nextMutation=null,undoSnapshot=null,lastSavedTime=0,rngState=0x9e3779b9,announcedMutations=new Set();
 let particles=[],rings=[],points=[],mutationLabels=[],lastTime=0,accumulator=0,shake=0,lastScore=-1,toastTimer,seenMerge=false,finalClock=0,winCats=[],pausedFrom='playing';
 const coupleArt=new Image();coupleArt.src='assets/mur-pair.webp?v=5';
 const sprites=[],rawImages=[],W=360,H=650;
@@ -102,18 +102,18 @@ function newSeed(){try{return crypto.getRandomValues(new Uint32Array(1))[0]||1}c
 function randomLevel(){const x=gameRandom();return x<.55?0:x<.89?1:2;}
 function updateNext(){const badge=$('#next-mutation');const meta=nextMutation?MUTATION_UI[nextMutation]:null;$('#next-cat').src=sprites[next]?sprites[next].toDataURL('image/png'):`assets/cat-${next}.webp`;$('#next-cat').alt=`Следующий: ${NAMES[next]}${meta?' · '+meta.label:''}`;badge.hidden=!meta;badge.textContent=meta?meta.symbol:'';badge.title=meta?meta.label+' — '+meta.detail:'';badge.setAttribute('aria-label',meta?meta.label+' — '+meta.detail:'Особая способность');badge.style.borderColor=meta?meta.color:'';}
 function refreshUndo(){$('#undo').disabled=!(state==='playing'&&undoSnapshot&&!world.bond);}
-function snapshot(){return captureSnapshot(world,{state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats},rngState)}
+function snapshot(){return captureSnapshot(world,{state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats,announcedMutations:[...announcedMutations]},rngState)}
 function persist(){if(!['playing','paused','finale'].includes(state))return;try{localStorage.setItem('myau-game-v1',encodeSave(snapshot(),undoSnapshot));lastSavedTime=world.time}catch{}}
 function clearSaved(){try{localStorage.removeItem('myau-game-v1')}catch{}}
-function applySnapshot(raw){const loaded=restoreSnapshot(raw,()=>new World({random:gameRandom}));if(!loaded)return false;world=loaded.world;({state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats}=loaded.ui);rngState=loaded.rngState;particles=[];rings=[];points=[];mutationLabels=[];shake=0;accumulator=0;lastTime=0;lastScore=-1;world.events.length=0;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();return true;}
-const MUTATION_UI={ghost:{symbol:'◌',color:'#a3c5ef',label:'Кот-призрак',detail:'1,5 с проходит сквозь котов'},heavy:{symbol:'▣',color:'#ffd08a',label:'Кот-жиробас',detail:'В 5 раз тяжелее обычного'},spring:{symbol:'↟',color:'#83e3c6',label:'Кот-пружина',detail:'От сильного удара разбрасывает котов'},ninja:{symbol:'✦',color:'#c2a8ff',label:'Кот-ниндзя',detail:'Прыгает после приземления'},magnet:{symbol:'⊕',color:'#ffa5cf',label:'Котомагнит',detail:'Притягивает котов своего размера'}};
+function applySnapshot(raw){const loaded=restoreSnapshot(raw,()=>new World({random:gameRandom}));if(!loaded)return false;world=loaded.world;({state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats}=loaded.ui);rngState=loaded.rngState;announcedMutations=new Set(loaded.ui.announcedMutations??[]);particles=[];rings=[];points=[];mutationLabels=[];shake=0;accumulator=0;lastTime=0;lastScore=-1;world.events.length=0;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();return true;}
+const MUTATION_UI={ghost:{symbol:'◌',color:'#a3c5ef',label:'Кот-призрак',detail:'1,5 с проходит сквозь котов'},heavy:{symbol:'▣',color:'#ffd08a',label:'Кот-жиробас',detail:'В 5 раз тяжелее обычного'},maniac:{symbol:'🔪',color:'#ff8097',label:'Кот-маньяк',detail:'При приземлении убирает одного кота другого уровня'},spring:{symbol:'↟',color:'#83e3c6',label:'Кот-пружина',detail:'Только в старых сохранениях'},ninja:{symbol:'✦',color:'#c2a8ff',label:'Кот-ниндзя',detail:'Прыгает после приземления'},magnet:{symbol:'⊕',color:'#ffa5cf',label:'Котомагнит',detail:'Притягивает одинаковых котов с увеличенного расстояния'}};
 $('#next-mutation').onclick=()=>{const m=nextMutation?MUTATION_UI[nextMutation]:null;if(m)toast(m.label+' · '+m.detail);};
 function updateHUD(){if(lastScore!==world.score){lastScore=world.score;$('#score').textContent=world.score;if(world.score>best){best=world.score;$('#best').textContent=best;save('meow-best',best);}}}
 function setHighest(level){if(level<=highest)return;highest=level;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;document.querySelectorAll('.cat-button').forEach((b,i)=>b.classList.toggle('active',i===highest));toast(`${NAMES[level]}! Мяу ещё ниже ↓`);}
 function toast(text){const el=$('#toast');el.textContent=text;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1900);}
-function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];mutationLabels=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;$('#hint').innerHTML='<span class="hint-dot"></span> Веди пальцем и отпусти кота';rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio();}
+function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;announcedMutations=new Set();undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];mutationLabels=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;$('#hint').innerHTML='<span class="hint-dot"></span> Веди пальцем и отпусти кота';rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio();}
 $('#start').addEventListener('click',start);
-function undoDrop(){if(state!=='playing'||!undoSnapshot||world.bond)return;const before=undoSnapshot;undoSnapshot=null;if(!applySnapshot(before))return;state='playing';refreshUndo();toast('Последний бросок отменён');persist();}
+function undoDrop(){if(state!=='playing'||!undoSnapshot||world.bond)return;const before=undoSnapshot;const previouslyAnnounced=[...announcedMutations];undoSnapshot=null;if(!applySnapshot(before))return;for(const type of previouslyAnnounced)announcedMutations.add(type);state='playing';refreshUndo();toast('Последний бросок отменён');persist();}
 $('#undo').onclick=undoDrop;
 try{const available=decodeSave(localStorage.getItem('myau-game-v1'),()=>new World({random:gameRandom}));if(available){const button=document.createElement('button');button.id='continue';button.className='secondary';button.textContent='Продолжить сохранённую игру ↗';$('#start').after(button);button.onclick=()=>{if(!applySnapshot(available.restored&&JSON.parse(localStorage.getItem('myau-game-v1')).snapshot))return;undoSnapshot=available.undo;pausedFrom=state==='paused'?pausedFrom:state;state='paused';resume();toast('Партия восстановлена');};}}catch{}
 function showOverlay(html){helpMode=false;refreshHelp();$('#overlay-content').innerHTML=html;$('#overlay').hidden=false;dragging=false;activePointer=null;}
@@ -135,7 +135,7 @@ function drop(){
  const r=RADII[current],x=Math.max(r+2,Math.min(W-r-2,aim));
  const type=currentMutation&&world.activeMutationCount()<3?currentMutation:null;
  world.add(current,x,43,{angle:(gameRandom()-.5)*.12,...(type?{mutationType:type}:{})});
- if(type)toast('ОСОБЫЙ КОТ: '+MUTATION_UI[type].label.toUpperCase());
+ if(type&&!announcedMutations.has(type)){announcedMutations.add(type);toast('ОСОБЫЙ КОТ: '+MUTATION_UI[type].label.toUpperCase());}
  throwCount++;lastDrop=world.time;meow(current,true);
  current=next;currentMutation=nextMutation;next=randomLevel();
  if(currentMutation&&world.activeMutationCount()>=3)currentMutation=null;
@@ -153,7 +153,7 @@ window.addEventListener('keydown',e=>{if(e.target.closest?.('button,a,input'))re
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause();if(document.hidden)persist();});
 window.addEventListener('pagehide',()=>persist());
 function mutationSound(type){if(!soundEnabled||!audioCtx||audioCtx.state!=='running')return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type==='heavy'?'triangle':'sine';o.frequency.setValueAtTime(type==='spring'?680:type==='ninja'?750:type==='magnet'?430:360,t);o.frequency.exponentialRampToValueAtTime(type==='spring'?320:type==='ninja'?950:type==='magnet'?600:240,t+.16);g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.11,t+.025);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.connect(g);g.connect(master);o.start(t);o.stop(t+.23);}catch{}}
-function handleEvents(){for(const e of world.events){if(e.type==='mutation'){const meta=MUTATION_UI[e.mutation];if(meta){mutationSound(e.mutation);const isImpact=e.stage==='impact',isEnd=e.stage==='end';const msg=e.mutation==='spring'?'ПРУЖИНА! БУМ!':e.mutation==='ninja'?'НИНДЗЯ! ПРЫЖОК!':e.mutation==='magnet'?'МАГНИТ! ПРИТЯЖЕНИЕ!':e.mutation==='heavy'?(isImpact?'ЖИРОБАС! МОЩНЫЙ УДАР!':'ЖИРОБАС! МАССА ×5'):isEnd?'ПРИЗРАК МАТЕРИАЛИЗОВАЛСЯ':'ПРИЗРАК! ПРОХОД СКВОЗЬ КОТОВ';toast(msg);mutationLabels.push({x:e.x,y:e.y-(e.r??18)-14,text:msg,life:1.2,max:1.2,color:meta.color});if(!reduced){const radius=e.mutation==='spring'?(e.r??24):e.mutation==='magnet'?(e.r??24)*4:(e.r??24)+4;rings.push({x:e.x,y:e.y,r:radius,life:isImpact?.48:.9,max:isImpact?.48:.9,color:meta.color,spread:e.mutation==='spring'?(e.r??24)*2:35});if(isImpact||e.mutation==='spring')shake=Math.max(shake,2.6);}}}if(e.type==='bond'){refreshHelp();refreshUndo();toast('ЧАДОСЛИЯНИЕ: 1,5 СЕКУНДЫ');}if(e.type==='mur'){toast('МУР-ИМПУЛЬС!');}if(e.type==='merge'||e.type==='win'||e.type==='mur'){
+function handleEvents(){for(const e of world.events){if(e.type==='mutation'){const meta=MUTATION_UI[e.mutation];if(meta){mutationSound(e.mutation);const isImpact=e.stage==='impact',isEnd=e.stage==='end';const msg=e.mutation==='maniac'?'−1 КОТ':e.mutation==='spring'?'БУМ!':e.mutation==='ninja'?'ПРЫЖОК!':e.mutation==='magnet'?'ПРИТЯЖЕНИЕ!':e.mutation==='heavy'?(isImpact?'УДАР!':'×5'):isEnd?'МАТЕРИАЛИЗАЦИЯ':'СКВОЗЬ КОТОВ';mutationLabels.push({x:e.x,y:e.y-(e.r??18)-14,text:msg,life:1.2,max:1.2,color:meta.color});if(!reduced){const radius=e.mutation==='spring'?(e.r??24):e.mutation==='magnet'?(e.r??24)*7:(e.r??24)+4;rings.push({x:e.x,y:e.y,r:radius,life:isImpact?.48:.9,max:isImpact?.48:.9,color:meta.color,spread:e.mutation==='spring'?(e.r??24)*2:35});if(isImpact||e.mutation==='spring')shake=Math.max(shake,2.6);}}}if(e.type==='bond'){refreshHelp();refreshUndo();toast('ЧАДОСЛИЯНИЕ: 1,5 СЕКУНДЫ');}if(e.type==='mur'){toast('МУР-ИМПУЛЬС!');}if(e.type==='merge'||e.type==='win'||e.type==='mur'){
   meow(e.level);if(e.type==='merge')setHighest(e.level);if(e.kind)toast(e.kind==='kamilla'?'КАМИЛЛКАЧАД!':'ДЕМИРЧАД!');if(!reduced){shake=Math.min(4,1+e.level*.35);rings.push({x:e.x,y:e.y,r:RADII[e.level],life:.7,max:.7,color:COLORS[e.level]});for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=35+Math.random()*90;particles.push({x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.4,color:COLORS[e.level]});}}
   points.push({x:e.x,y:e.y-RADII[e.level],life:1,text:`+${e.points??2048}`});if(!seenMerge){seenMerge=true;$('#hint').innerHTML='<span class="hint-dot"></span> Больше кот → ниже мяу';}
 }if(e.type==='over')endScreen(false);
@@ -213,7 +213,7 @@ function drawMutationAura(ball) {
   } else if(mutation.type==='magnet'&&active){
     ctx.globalAlpha=.25+.10*Math.sin(t*9);
     ctx.setLineDash([7,9]);ctx.lineDashOffset=-t*12;
-    ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(0,0,Math.min(r*4,130),0,Math.PI*2);ctx.stroke();
+    ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(0,0,Math.min(r*7,180),0,Math.PI*2);ctx.stroke();
     ctx.globalAlpha=.6;ctx.setLineDash([]);ctx.beginPath();ctx.arc(0,0,r+13+4*Math.sin(t*8),0,Math.PI*2);ctx.stroke();
     // Show actual targets, never invent attraction when no matching cat is nearby.
     let shown=0;for(const target of world.balls){
@@ -221,7 +221,7 @@ function drawMutationAura(ball) {
       if(target===ball||target.level!==ball.level||
          (target.mutation&&target.mutation.phase!=='spent'))continue;
       const dx=target.x-ball.x,dy=target.y-ball.y;
-      if(Math.hypot(dx,dy)>r*4)continue;
+      if(Math.hypot(dx,dy)>r*7)continue;
       ctx.globalAlpha=.45+.18*Math.sin(t*12);ctx.strokeStyle=meta.color;ctx.lineWidth=1.5;
       ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(dx,dy);ctx.stroke();shown++;
     }
@@ -230,6 +230,8 @@ function drawMutationAura(ball) {
   } else if(mutation.type==='ninja'&&mutation.phase==='armed'){
     ctx.globalAlpha=.7;ctx.setLineDash([9,6]);ctx.lineDashOffset=t*24;
     ctx.beginPath();ctx.arc(0,0,r+8,0,Math.PI*2);ctx.stroke();
+  } else if(mutation.type==='maniac'){
+    ctx.globalAlpha=.85;ctx.lineWidth=2.7;ctx.beginPath();ctx.moveTo(-r*.4,r*.72);ctx.lineTo(r*.4,r*.72);ctx.stroke();
   } else if(mutation.type==='heavy'){
     ctx.globalAlpha=.85;ctx.lineWidth=3.2;
     ctx.beginPath();ctx.moveTo(-r*.6,r+8);ctx.lineTo(r*.6,r+8);ctx.stroke();

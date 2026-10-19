@@ -4,7 +4,7 @@ import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave,SAVE_VERSION} from
 const mk=()=>new World({random:()=>.4});
 const ui={state:'playing',pausedFrom:'playing',current:0,next:1,
   currentMutation:null,nextMutation:'ghost',throwCount:4,highest:2,
-  helpRemaining:3,aim:180,lastDrop:.48,seenMerge:true,finalClock:0,winCats:[]};
+  helpRemaining:3,announcedMutations:[],aim:180,lastDrop:.48,seenMerge:true,finalClock:0,winCats:[]};
 const w=mk();w.add(0,100,100,{mutationType:'spring'});w.add(1,200,600);
 w.balls[0].mutation.phase='armed';w.balls[0].mutationSettle=.17;
 w.time=.55;w.score=24;

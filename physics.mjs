@@ -1,5 +1,5 @@
-import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS} from './mutations.mjs';
-import {startMutationTick, finishMutationTick, registerImpact, registerTouchdown, isPhased, inverseMass} from './mutation_effects.mjs?v=3';
+import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS, spendMutation} from './mutations.mjs?v=2';
+import {startMutationTick, finishMutationTick, registerImpact, registerTouchdown, isPhased, inverseMass} from './mutation_effects.mjs?v=4';
 export const RADII = [18,25,33,42,53,61,72,84,98];
 export const RATES = [1.55,1.30,1.08,.90,.74,.61,.50,.40,.26];
 export class World {
@@ -96,6 +96,24 @@ export class World {
               this.events.push({type:'merge',x,y,level,points});
             }
             merged=true;break;
+          }
+          // The maniac removes one different-level cat it lands on.
+          // Same-level merging already took priority; bosses are immune.
+          const fromAbove=Math.max(3,min*.18);
+          const attackerA=dy>fromAbove && a.mutation?.type==='maniac' &&
+            a.mutation.phase==='armed' && a.vy>=b.vy-25;
+          const attackerB=dy<-fromAbove && b.mutation?.type==='maniac' &&
+            b.mutation.phase==='armed' && b.vy>=a.vy-25;
+          const killer=attackerA?a:attackerB?b:null;
+          if(killer){
+            const victim=killer===a?b:a;
+            if(victim.level<8){
+              killer.mutation=spendMutation(killer.mutation);
+              this.balls.splice(this.balls.indexOf(victim),1);
+              this.events.push({type:'mutation',mutation:'maniac',stage:'remove',
+                id:killer.id,targetId:victim.id,x:victim.x,y:victim.y,r:victim.r});
+              merged=true;break;
+            }
           }
           if(d<.001){dx=.01;dy=0;d=.01;}
           const nx=dx/d,ny=dy/d,ia=inverseMass(a),ib=inverseMass(b),sum=ia+ib;

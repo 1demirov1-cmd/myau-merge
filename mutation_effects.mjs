@@ -1,8 +1,8 @@
 // Physical effects for МЯУ-МУТАЦИИ. Used only when a ball explicitly has mutation metadata.
-// No random mutant drops are enabled in the game UI yet.
+// Effects activate only on explicit mutation metadata.
 import {
   MUTATION_DEFINITIONS, activateMutation, advanceMutation,
-} from './mutations.mjs';
+} from './mutations.mjs?v=2';
 
 export const EFFECT_MAX_SPEED = 850;
 const MAX_IMPULSE = 360;
@@ -78,7 +78,7 @@ export function startMutationTick(world, dt) {
       const range = source.r * MUTATION_DEFINITIONS.magnet.rangeInRadii;
       if (dist < 1 || dist > range) continue;
       const proximity = 1 - dist / range;
-      const acceleration = 1800 * proximity;
+      const acceleration = 3200 * proximity;
       target.vx = cap(target.vx + dx / dist * acceleration * dt);
       target.vy = cap(target.vy + dy / dist * acceleration * dt);
     }

@@ -10,7 +10,9 @@ import {
 assert.equal(MUTATION_CHANCE, .1);
 assert.equal(FIRST_MUTATION_THROW, 5);
 assert.equal(MAX_ACTIVE_MUTATIONS, 3);
-assert.deepEqual(MUTATION_TYPES, ['ghost','heavy','spring','ninja','magnet']);
+assert.equal(MUTATION_DEFINITIONS.spring.weight,0,'legacy spring must not spawn');
+assert.equal(MUTATION_DEFINITIONS.magnet.rangeInRadii,7);
+assert.deepEqual(MUTATION_TYPES, ['ghost','heavy','maniac','ninja','magnet']);
 assert.equal(MUTATION_TYPES.reduce((sum,t)=>sum+MUTATION_DEFINITIONS[t].weight,0),100);
 for(let i=0;i<=8;i++) assert.equal(isMutationLevel(i),i<=4);
 assert(!isMutationLevel(2.5));
@@ -28,7 +30,7 @@ assert.equal(rollMutation({level:0,throwNumber:5,balls:[
 ],random:noRng}),null);
 assert.equal(rollMutation({level:0,throwNumber:5,random:()=>.1}),null);
 
-const cases=[['ghost',0],['heavy',.20],['spring',.45],['ninja',.70],['magnet',.85]];
+const cases=[['ghost',0],['heavy',.20],['maniac',.45],['ninja',.70],['magnet',.85]];
 for(const [expected,pick] of cases) {
   const numbers=[.05,pick];let calls=0;
   const value=rollMutation({level:0,throwNumber:5,random:()=>numbers[calls++]});
