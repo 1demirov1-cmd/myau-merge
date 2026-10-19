@@ -11,7 +11,7 @@ export const MUTATION_DEFINITIONS = Object.freeze({
   maniac: Object.freeze({weight: 25, trigger: 'contact', duration: 0}),
   ninja: Object.freeze({weight: 15, trigger: 'settled', duration: 0, jumpDelay: 0.4, jumpHeightInDiameters: 2.4}),
   magnet: Object.freeze({weight: 15, trigger: 'settled', duration: 2, rangeInRadii: 7}),
-  vampire: Object.freeze({weight: 15, trigger: 'settled', duration: 0, rangeInRadii: 3}),
+  vampire: Object.freeze({weight: 15, trigger: 'contact', duration: 0}),
 });
 export const MUTATION_TYPES = Object.freeze(Object.keys(MUTATION_DEFINITIONS).filter(type => MUTATION_DEFINITIONS[type].weight > 0));
 const WEIGHT_TOTAL = MUTATION_TYPES.reduce((sum, type) => sum + MUTATION_DEFINITIONS[type].weight, 0);
