@@ -159,8 +159,8 @@ export function finishMutationTick(world, dt) {
           b.level < 8 && Math.hypot(b.x-ball.x,b.y-ball.y) <= radius)
           .sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y) -
             Math.hypot(b.x-ball.x,b.y-ball.y) || a.id-b.id)[0];
-        ball.mutation = spendMutation(state);
         if (target) {
+          ball.mutation = spendMutation(state);
           const level = target.level;
           const x = (ball.x+target.x)/2, y = (ball.y+target.y)/2;
           world.balls.splice(world.balls.indexOf(target),1);
