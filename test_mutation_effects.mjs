@@ -20,20 +20,14 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} �
   step(ordinary,5);step(weighted,5);
   assert(heavyTarget.vx>ordinaryTarget.vx+3,'heavy must transfer more momentum');
 }
-// Пружина: weak impact does not trigger; strong impact triggers one radial pulse.
+// Maniac deletes only an eligible different-level cat upon descending contact.
 {
-  const weak=new World();const b=weak.add(1,140,650-RADII[1],{mutationType:'spring'});
-  step(weak,15);assert.equal(b.mutation.phase,'armed');
-  assert(!weak.events.some(e=>e.mutation==='spring'));
-  const w=new World();const spring=w.add(2,90,650-RADII[2]-10,{mutationType:'spring',vy:390});
-  const target=w.add(0,157,650-RADII[0]);
-  step(w,16);
-  assert.equal(spring.mutation.phase,'spent');
-  assert(w.events.some(e=>e.mutation==='spring'&&e.stage==='burst'&&e.r===spring.r));
-  assert.equal(w.events.filter(e=>e.mutation==='spring').length,1);
-  assert(target.vx>0,'spring impulse should push neighbor outwards');
-  assert(Math.abs(target.vx)<=EFFECT_MAX_SPEED);
-  step(w,40);assert.equal(w.events.filter(e=>e.mutation==='spring').length,1);
+  const w=new World();const killer=w.add(0,100,200,{mutationType:'maniac',vy:230});
+  const target=w.add(1,100,235);step(w);
+  assert(w.balls.some(b=>b.id===killer.id));
+  assert(!w.balls.some(b=>b.id===target.id));
+  assert.equal(killer.mutation.phase,'spent');
+  assert.equal(w.events.filter(e=>e.mutation==='maniac').length,1);
 }
 // Ниндзя: settle 0.4 seconds, then exactly one jump.
 {
@@ -114,7 +108,7 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} �
   let seed=87654321;
   const rng=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   const w=new World({random:rng});
-  const types=['heavy','ghost','spring','ninja','magnet'];
+  const types=['heavy','ghost','maniac','ninja','magnet'];
   for(let i=0;i<90;i++){
     if(w.balls.length<35){
       const level=i%5;

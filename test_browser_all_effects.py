@@ -12,7 +12,7 @@ url=f'http://127.0.0.1:{server.server_port}/'
 try:
  with sync_playwright() as pw:
   browser=pw.chromium.launch(headless=True,executable_path=r'C:\Program Files\Google\Chrome\Application\chrome.exe',args=['--no-sandbox'])
-  for typ,needle in [('spring','ПРУЖИНА! БУМ!'),('ninja','НИНДЗЯ! ПРЫЖОК!'),('magnet','МАГНИТ! ПРИТЯЖЕНИЕ!')]:
+  for typ,needle in [('ninja','ПРЫЖОК'),('magnet','ПРИТЯЖЕНИЕ')]:
    c=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,service_workers='block')
    pg=c.new_page()
    errors=[]
@@ -31,7 +31,7 @@ try:
     assert marker in body, 'Cannot intercept mutation probability'
     body=body.replace(marker, f"if(throwNumber===5) return '{typ}'; return null;")
     route.fulfill(response=response,body=body)
-   pg.route('**/mutations.mjs',mutation_route)
+   pg.route('**/mutations.mjs*',mutation_route)
    pg.goto(url,wait_until='domcontentloaded',timeout=25000)
    pg.locator('#start').click()
    pg.wait_for_timeout(150)

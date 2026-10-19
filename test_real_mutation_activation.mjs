@@ -19,12 +19,6 @@ function run(type, makeWorld, seconds=4) {
  return {w,ball,events,peakUp,minX,peakRight};
 }
 {
- const s=run('spring',(w,type)=>w.add(0,180,43,{mutationType:type}));
- assert(s.events.some(e=>e.mutation==='spring'&&e.stage==='burst'),'Spring did not burst');
- assert(s.peakUp < -150,'Spring did not visibly bounce: '+s.peakUp);
- console.log('SPRING_REAL_DROP_PASS',s.peakUp.toFixed(1));
-}
-{
  const n=run('ninja',(w,type)=>w.add(0,180,43,{mutationType:type}));
  assert(n.events.some(e=>e.mutation==='ninja'&&e.stage==='jump'),'Ninja did not jump');
  assert(n.peakUp < -300,'Ninja jump was not visible: '+n.peakUp);
@@ -39,14 +33,5 @@ function run(type, makeWorld, seconds=4) {
  assert(m.events.some(e=>e.mutation==='magnet'&&e.stage==='start'),'Magnet did not activate');
  assert(m.w.events.some(e=>e.type==='merge')||m.w.balls.length===1,'Magnet did not pull same-level target into a merge');
  console.log('MAGNET_REAL_DROP_PASS',m.w.balls.length,m.events.length);
-}
-{
- const w=new World();
- const spring=w.add(0,140,180,{mutationType:'spring'});
- const peer=w.add(0,140,180);
- w.step(DT);
- assert(w.events.some(e=>e.mutation==='spring'&&e.stage==='burst'),'Spring vanished upon same-level merge');
- assert.equal(w.balls.length,1);
- console.log('SPRING_MERGE_PASS');
 }
 console.log('REAL_DROPS_MUTATIONS_PASS');

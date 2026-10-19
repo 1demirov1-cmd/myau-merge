@@ -5,7 +5,6 @@ import {
 } from './mutations.mjs?v=2';
 
 export const EFFECT_MAX_SPEED = 850;
-const MAX_IMPULSE = 360;
 
 const cap = (value, limit = EFFECT_MAX_SPEED) => Math.max(-limit, Math.min(limit, value));
 const normalBall = ball => ball.level < 8 && (!ball.mutation || ball.mutation.phase === 'spent');
@@ -96,35 +95,8 @@ export function registerImpact(world, ball, speed) {
     ball.heavyImpactAt=world.time;
     world.events.push({type:'mutation',mutation:'heavy',stage:'impact',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
   }
-  if (ball.mutation?.type !== 'spring' || ball.mutation.phase !== 'armed' ||
-      speed < MUTATION_DEFINITIONS.spring.minImpactSpeed) return;
-  ball.mutation = activateMutation(ball.mutation);
-  (world.mutationPulses ??= []).push({id:ball.id,x:ball.x,y:ball.y,r:ball.r});
-  world.events.push({type:'mutation',mutation:'spring',stage:'burst',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
 }
-
-function applyPulse(world, pulse) {
-  // A lone spring visibly rebounds rather than silently consuming its charge.
-  const spring=world.balls.find(b=>b.id===pulse.id);
-  if(spring && spring.level<8) spring.vy=Math.min(spring.vy,-230);
-  const range = pulse.r * MUTATION_DEFINITIONS.spring.rangeInRadii;
-  for (const ball of world.balls) {
-    if (ball.id === pulse.id || ball.level >= 8 || isPhased(ball)) continue;
-    const dx=ball.x-pulse.x,dy=ball.y-pulse.y,dist=Math.hypot(dx,dy);
-    if (dist >= range) continue;
-    const falloff=1-dist/range;
-    const strength=Math.min(MAX_IMPULSE, 290*falloff);
-    const ux=dist > .001 ? dx/dist : (ball.id%2 ? -1 : 1);
-    const uy=dist > .001 ? dy/dist : -1;
-    ball.vx=cap(ball.vx+ux*strength);
-    ball.vy=cap(ball.vy+uy*strength);
-  }
-}
-
 export function finishMutationTick(world, dt) {
-  // Impacts are queued so all pulses are processed after collision iteration.
-  for (const pulse of world.mutationPulses ?? []) applyPulse(world, pulse);
-  if (world.mutationPulses) world.mutationPulses.length=0;
   for (const ball of world.balls) {
     const state = ball.mutation;
     if (!state) continue;

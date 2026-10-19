@@ -1,5 +1,5 @@
-import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS, spendMutation} from './mutations.mjs?v=2';
-import {startMutationTick, finishMutationTick, registerImpact, registerTouchdown, isPhased, inverseMass} from './mutation_effects.mjs?v=4';
+import {createMutationState, countActiveMutations, isMutationLevel, MAX_ACTIVE_MUTATIONS, spendMutation} from './mutations.mjs?v=3';
+import {startMutationTick, finishMutationTick, registerImpact, registerTouchdown, isPhased, inverseMass} from './mutation_effects.mjs?v=5';
 export const RADII = [18,25,33,42,53,61,72,84,98];
 export const RATES = [1.55,1.30,1.08,.90,.74,.61,.50,.40,.26];
 export class World {
@@ -73,11 +73,7 @@ export class World {
           }
           if(a.level===b.level&&a.level<8&&this.time>=a.lock&&this.time>=b.lock){
             const x=(a.x+b.x)/2,y=(a.y+b.y)/2,level=a.level+1;
-            // A spring merging on contact must not disappear before its one-time burst.
-            if(a.mutation?.type==='spring')registerImpact(this,a,100);
-            if(b.mutation?.type==='spring')registerImpact(this,b,100);
             this.balls.splice(j,1);this.balls.splice(i,1);
-
             const points=2**(level+1);this.score+=points;
             if(level===8){
               this.bossProduced++;
@@ -100,9 +96,9 @@ export class World {
           // The maniac removes one different-level cat it lands on.
           // Same-level merging already took priority; bosses are immune.
           const fromAbove=Math.max(3,min*.18);
-          const attackerA=dy>fromAbove && a.mutation?.type==='maniac' &&
+          const attackerA=dy>fromAbove && a.level!==b.level && a.mutation?.type==='maniac' &&
             a.mutation.phase==='armed' && a.vy>=b.vy-25;
-          const attackerB=dy<-fromAbove && b.mutation?.type==='maniac' &&
+          const attackerB=dy<-fromAbove && a.level!==b.level && b.mutation?.type==='maniac' &&
             b.mutation.phase==='armed' && b.vy>=a.vy-25;
           const killer=attackerA?a:attackerB?b:null;
           if(killer){

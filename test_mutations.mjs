@@ -10,7 +10,7 @@ import {
 assert.equal(MUTATION_CHANCE, .1);
 assert.equal(FIRST_MUTATION_THROW, 5);
 assert.equal(MAX_ACTIVE_MUTATIONS, 3);
-assert.equal(MUTATION_DEFINITIONS.spring.weight,0,'legacy spring must not spawn');
+assert.equal(MUTATION_DEFINITIONS.maniac.weight,25);
 assert.equal(MUTATION_DEFINITIONS.magnet.rangeInRadii,7);
 assert.deepEqual(MUTATION_TYPES, ['ghost','heavy','maniac','ninja','magnet']);
 assert.equal(MUTATION_TYPES.reduce((sum,t)=>sum+MUTATION_DEFINITIONS[t].weight,0),100);
@@ -77,7 +77,7 @@ const heavy=activateMutation(createMutationState('heavy'));
 assert.equal(heavy.phase,'active');assert.equal(heavy.remaining,null);
 assert.strictEqual(advanceMutation(heavy,100),heavy);
 assert.equal(spendMutation(heavy).phase,'spent');
-for(const type of ['spring','ninja']){
+for(const type of ['maniac','ninja']){
   assert.equal(activateMutation(createMutationState(type)).phase,'spent');
 }
 assert.equal(advanceMutation(activateMutation(createMutationState('magnet')),2).phase,'spent');
@@ -86,7 +86,7 @@ assert.equal(advanceMutation(activateMutation(createMutationState('magnet')),2).
 const world=new World();
 world.add(0,40,180,{mutationType:'ghost'});
 world.add(1,100,180,{mutationType:'heavy'});
-world.add(2,200,180,{mutationType:'spring'});
+world.add(2,200,180,{mutationType:'maniac'});
 assert.equal(world.activeMutationCount(),3);
 assert.equal(countActiveMutations(world.balls),3);
 const prevId=world.nextId;

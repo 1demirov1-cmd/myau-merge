@@ -3,7 +3,7 @@ export const SAVE_VERSION = 1;
 const BALL_FIELDS=['id','level','r','x','y','vx','vy','angle','spin','born','lock','kind','materializeUntil','mutationSettle'];
 const WORLD_FIELDS=['width','height','gravity','score','time','nextId','danger','over','won','bossProduced','murUntil','bond'];
 const UI_FIELDS=['state','pausedFrom','current','next','currentMutation','nextMutation','throwCount','highest','helpRemaining','aim','lastDrop','seenMerge','finalClock','winCats','announcedMutations'];
-const MUT_TYPES=new Set(['ghost','heavy','maniac','spring','ninja','magnet']);
+const MUT_TYPES=new Set(['ghost','heavy','maniac','ninja','magnet']);
 const PHASES=new Set(['armed','active','spent']);
 const validNumber=v=>typeof v==='number'&&Number.isFinite(v);
 const copy=(obj,fields)=>Object.fromEntries(fields.filter(k=>Object.hasOwn(obj,k)).map(k=>[k,obj[k]]));
@@ -40,7 +40,13 @@ export function restoreSnapshot(snapshot,makeWorld) {
   if(!snapshot||snapshot.version!==SAVE_VERSION||!snapshot.world||!snapshot.ui||
     !Array.isArray(snapshot.world.balls)||snapshot.world.balls.length>256||
     typeof makeWorld!=='function')return null;
-  const w=snapshot.world,u=snapshot.ui;
+  // One-time compatibility: replace retired special cats in older saves with ordinary cats.
+  const legacy='spring';
+  const w={...snapshot.world,balls:snapshot.world.balls.map(b=>b?.mutation?.type===legacy?{...b,mutation:undefined}:b)};
+  const u={...snapshot.ui,
+    currentMutation:snapshot.ui.currentMutation===legacy?null:snapshot.ui.currentMutation,
+    nextMutation:snapshot.ui.nextMutation===legacy?null:snapshot.ui.nextMutation,
+    announcedMutations:Array.isArray(snapshot.ui.announcedMutations)?snapshot.ui.announcedMutations.filter(t=>t!==legacy):[]};
   const numericWorld=['width','height','gravity','score','time','nextId','danger','bossProduced','murUntil'];
   if(numericWorld.some(k=>!validNumber(w[k]))||w.width<200||w.width>1200||
     w.height<300||w.height>1400||w.time<0||w.nextId<1||

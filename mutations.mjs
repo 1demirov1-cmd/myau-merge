@@ -1,4 +1,4 @@
-// МЯУ-МУТАЦИИ: active and legacy definitions. Spring is retained only for old saved games.
+// МЯУ-МУТАЦИИ: five active special-cat abilities.
 export const MUTATION_CHANCE = 0.10;
 export const FIRST_MUTATION_THROW = 5; // 1-based drop number
 export const MAX_ACTIVE_MUTATIONS = 3;
@@ -9,7 +9,6 @@ export const MUTATION_DEFINITIONS = Object.freeze({
   ghost: Object.freeze({weight: 20, trigger: 'drop', duration: 1.5}),
   heavy: Object.freeze({weight: 25, trigger: 'drop', duration: null, massMultiplier: 5}),
   maniac: Object.freeze({weight: 25, trigger: 'contact', duration: 0}),
-  spring: Object.freeze({weight: 0, trigger: 'impact', duration: 0, minImpactSpeed: 100, rangeInRadii: 3}),
   ninja: Object.freeze({weight: 15, trigger: 'settled', duration: 0, jumpDelay: 0.4, jumpHeightInDiameters: 1.5}),
   magnet: Object.freeze({weight: 15, trigger: 'settled', duration: 2, rangeInRadii: 7}),
 });
