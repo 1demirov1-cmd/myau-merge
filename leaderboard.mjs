@@ -40,7 +40,7 @@ async function sync(){
 }
 async function show(){
  modal.hidden=false;
- if(!client){await if(localStorage.getItem('myau-nickname'))init();if(!client)return}
+ if(!client){await init();if(!client)return}
  const r=await client.from('myau_players').select('nickname,best_score,user_id').order('best_score',{ascending:false}).order('updated_at',{ascending:true}).limit(100);
  if(r.error){msg('Не удалось загрузить ТОП-100');return}
  body.replaceChildren();
