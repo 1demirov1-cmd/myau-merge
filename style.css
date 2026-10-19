@@ -33,3 +33,37 @@
 #rank-status{font-size:12px;color:#d6c4e6;margin:0}.rank-scroll{overflow:auto;min-height:100px}.rank-panel table{width:100%;border-collapse:collapse;font-size:14px}.rank-panel th{text-align:left;color:#bfa5d9;font-size:11px;padding:9px 5px}.rank-panel td{border-top:1px solid #ffffff16;padding:9px 5px}.rank-panel td:last-child{text-align:right;font-variant-numeric:tabular-nums}.rank-panel .mine{background:#61407988}
 
 .rank-skip{display:flex;align-items:center;gap:9px;font-size:14px;color:#e3d3f1;cursor:pointer}.rank-skip input{width:18px;height:18px;accent-color:#a885dd}.rank-profile button:disabled,.rank-profile input:disabled{opacity:.5}
+
+
+/* Approved compact MYAU header, score strip and next-cat tile */
+.topbar{position:relative;min-height:61px;align-items:flex-start}
+.topbar .brand{font-size:25px;line-height:1.1;white-space:nowrap}
+.header-nick{position:absolute;left:35px;top:30px;max-width:calc(100% - 195px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:0;background:transparent;color:var(--lilac);font-size:16px;font-weight:800;text-align:left;padding:2px 0}
+.header-nick:focus-visible{outline:2px solid var(--lime)}
+.scorebar{grid-template-columns:minmax(0,1fr) 76px;gap:8px}
+.scorebar>div.score-stats{display:grid;grid-template-columns:36% minmax(0,1fr);align-items:center;gap:0;min-height:66px;padding:9px 12px}
+.score-current,.score-best{min-width:0;display:flex;flex-direction:column;gap:5px}
+.score-current{border-right:1px solid var(--border);margin-right:13px}
+.scorebar .score-stats strong{font-size:25px}
+.scorebar .score-current strong{color:var(--lilac)}
+.scorebar>div.next{padding:9px 6px;min-height:66px;align-items:center}
+.next .label{font-size:9px}
+.next img{right:50%;transform:translateX(50%);bottom:5px;height:36px;width:40px}
+.rank-open{font-size:10px;margin-top:0;padding:0}
+@media(max-width:800px){
+ .topbar{min-height:56px;margin-bottom:7px}
+ .scorebar{margin-bottom:8px}
+ .scorebar>div.score-stats,.scorebar>div.next{min-height:59px}
+ .scorebar .score-stats strong{font-size:23px}
+ .header-nick{top:29px}
+ .arena-wrap{max-width:calc((100dvh - 230px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * .55384615)}
+}
+@media(max-width:390px){
+ .topbar .brand{font-size:21px}
+ .header-nick{left:34px;top:26px;font-size:15px;max-width:calc(100% - 176px)}
+ .scorebar{grid-template-columns:minmax(0,1fr) 68px;gap:6px}
+ .scorebar>div.score-stats{padding:7px 9px}
+ .score-current{margin-right:9px}
+ .scorebar .score-stats strong{font-size:21px}
+ .scorebar .label{font-size:8px}
+}

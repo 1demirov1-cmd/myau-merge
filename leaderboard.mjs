@@ -3,6 +3,10 @@ const URL='https://udeheaejvqwqsubktnml.supabase.co';
 const KEY=globalThis.MYAU_SUPABASE_PUBLISHABLE_KEY||'';
 const $=s=>document.querySelector(s);
 const modal=$('#rank-modal'),status=$('#rank-status'),body=$('#rank-list'),place=$('#rank-place');
+const headerNick=$('#header-nick');
+function renderNick(){headerNick.textContent=clean(localStorage.getItem('myau-nickname'))||'Гость'}
+headerNick.addEventListener('click',()=>$('#rank-open').click());
+renderNick();
 let client=null,user=null,nick='',bestSent=0,busy=false;
 function msg(s){status.textContent=s}
 function clean(s){return String(s||'').trim().replace(/[<>]/g,'').slice(0,20)}
@@ -17,7 +21,7 @@ async function init(){
   user=session.user;
   const r=await client.from('myau_players').select('nickname,best_score').eq('user_id',user.id).maybeSingle();
   if(r.error)throw r.error;
-  nick=clean(r.data?.nickname||localStorage.getItem('myau-nickname')||'');
+  nick=clean(r.data?.nickname||localStorage.getItem('myau-nickname')||'');renderNick();
   bestSent=Number(r.data?.best_score)||0;
   if(nick){$('#rank-nick').value=nick;await sync()}
   else {msg('Укажи ник, чтобы участвовать в рейтинге');setPlace('—')}
@@ -69,7 +73,7 @@ modal.addEventListener('click',e=>{if(e.target===modal)modal.hidden=true});
 $('#rank-save').addEventListener('click',async()=>{
  const n=clean($('#rank-nick').value);
  if(n.length<2){msg('Ник должен содержать от 2 до 20 символов');return}
- nick=n;localStorage.setItem('myau-nickname',n);localStorage.setItem('myau-rank-choice','joined');
+ nick=n;localStorage.setItem('myau-nickname',n);renderNick();localStorage.setItem('myau-rank-choice','joined');
  await sync();await show();
 });
 window.addEventListener('myau-best-updated',()=>{if(client&&nick)sync()});
