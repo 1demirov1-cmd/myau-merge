@@ -17,3 +17,5 @@ begin
 end $$;
 drop trigger if exists myau_guard_score_trigger on public.myau_players;
 create trigger myau_guard_score_trigger before insert or update on public.myau_players for each row execute function public.myau_guard_score();
+-- Nicknames must be unique irrespective of case and surrounding whitespace.
+create unique index if not exists myau_players_nickname_unique_ci on public.myau_players (lower(btrim(nickname)));

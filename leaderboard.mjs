@@ -2,12 +2,31 @@ import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 const URL='https://udeheaejvqwqsubktnml.supabase.co';
 const KEY=globalThis.MYAU_SUPABASE_PUBLISHABLE_KEY||'';
 const $=s=>document.querySelector(s);
+// One-time leaderboard reset: old test nicknames must not repopulate the clean table.
+if(localStorage.getItem('myau-rank-reset-v1')!=='done'){
+ localStorage.removeItem('myau-nickname');
+ localStorage.removeItem('myau-rank-choice');
+ localStorage.setItem('myau-rank-reset-v1','done');
+}
+
 const modal=$('#rank-modal'),status=$('#rank-status'),body=$('#rank-list'),place=$('#rank-place');
 const headerNick=$('#header-nick');
 function renderNick(){headerNick.textContent=clean(localStorage.getItem('myau-nickname'))||'Гость'}
 headerNick.addEventListener('click',()=>$('#rank-open').click());
 renderNick();
-let client=null,user=null,nick='',bestSent=0,busy=false;
+let client=null,user=null,nick='',bestSent=0,busy=false,editing=false;
+const profile=$('#rank-profile'),editButton=$('#rank-edit'),skipLabel=$('.rank-skip');
+function updateProfile(){
+ const registered=!!nick && localStorage.getItem('myau-rank-choice')!=='skip';
+ profile.hidden=registered&&!editing;
+ skipLabel.hidden=registered&&!editing;
+ editButton.hidden=!registered||editing;
+ editButton.textContent='Изменить ник';
+}
+editButton.addEventListener('click',()=>{
+ editing=true;updateProfile();$('#rank-nick').value=nick;$('#rank-nick').focus();
+});
+updateProfile();
 function msg(s){status.textContent=s}
 function clean(s){return String(s||'').trim().replace(/[<>]/g,'').slice(0,20)}
 function score(){return Math.max(0,Math.min(100000000,Number(localStorage.getItem('meow-best'))||0))}
@@ -21,7 +40,7 @@ async function init(){
   user=session.user;
   const r=await client.from('myau_players').select('nickname,best_score').eq('user_id',user.id).maybeSingle();
   if(r.error)throw r.error;
-  nick=clean(r.data?.nickname||localStorage.getItem('myau-nickname')||'');renderNick();
+  nick=clean(r.data?.nickname||localStorage.getItem('myau-nickname')||'');renderNick();updateProfile();
   bestSent=Number(r.data?.best_score)||0;
   if(nick){$('#rank-nick').value=nick;await sync()}
   else {msg('Укажи ник, чтобы участвовать в рейтинге');setPlace('—')}
@@ -43,7 +62,7 @@ async function sync(){
  finally{busy=false}
 }
 async function show(){
- modal.hidden=false;
+ modal.hidden=false;updateProfile();
  if(!client){await init();if(!client)return}
  const r=await client.from('myau_players').select('nickname,best_score,user_id').order('best_score',{ascending:false}).order('updated_at',{ascending:true}).limit(100);
  if(r.error){msg('Не удалось загрузить ТОП-100');return}
@@ -73,10 +92,24 @@ modal.addEventListener('click',e=>{if(e.target===modal)modal.hidden=true});
 $('#rank-save').addEventListener('click',async()=>{
  const n=clean($('#rank-nick').value);
  if(n.length<2){msg('Ник должен содержать от 2 до 20 символов');return}
- nick=n;localStorage.setItem('myau-nickname',n);renderNick();localStorage.setItem('myau-rank-choice','joined');
+ if(!client)await init();
+ if(!client||!user){msg('Нет подключения к рейтингу. Попробуй ещё раз');return}
+ const oldNick=nick;
+ nick=n;
+ const best=Math.max(score(),bestSent);
+ const saved=await client.from('myau_players').upsert({user_id:user.id,nickname:n,best_score:best},{onConflict:'user_id'});
+ if(saved.error){
+  nick=oldNick;
+  msg(saved.error.code==='23505'?'Этот ник уже занят. Выбери другой':'Не удалось сохранить ник: '+saved.error.message);
+  return;
+ }
+ bestSent=best;
+ localStorage.setItem('myau-nickname',n);
+ localStorage.setItem('myau-rank-choice','joined');
+ renderNick();editing=false;updateProfile();
  await sync();await show();
 });
 window.addEventListener('myau-best-updated',()=>{if(client&&nick)sync()});
-if(localStorage.getItem('myau-nickname'))init();
+if(localStorage.getItem('myau-nickname')){nick=clean(localStorage.getItem('myau-nickname'));updateProfile();init();}
 else if(localStorage.getItem('myau-rank-choice')==='skip'){skip.checked=true;$('#rank-nick').disabled=true;$('#rank-save').disabled=true;}
 else {modal.hidden=false;msg('Придумай ник для мирового ТОПа или выбери «Играть без ника»');}

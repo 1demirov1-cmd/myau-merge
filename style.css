@@ -94,3 +94,5 @@
  .track-caption{display:none}
 }
 @media(max-width:390px){.scorebar{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 61px;gap:5px}.scorebar>div.score-current,.scorebar>div.score-best{padding-left:8px;padding-right:5px}.scorebar>div.score-best strong{font-size:19px}}
+
+.rank-profile[hidden],.rank-skip[hidden],.rank-edit[hidden]{display:none!important}.rank-edit{align-self:flex-start;border:1px solid #735b90;border-radius:8px;background:#31243d;color:#e9d9ff;font-size:11px;padding:6px 10px;cursor:pointer}
