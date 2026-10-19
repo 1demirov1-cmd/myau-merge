@@ -96,3 +96,13 @@
 @media(max-width:390px){.scorebar{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 61px;gap:5px}.scorebar>div.score-current,.scorebar>div.score-best{padding-left:8px;padding-right:5px}.scorebar>div.score-best strong{font-size:19px}}
 
 .rank-profile[hidden],.rank-skip[hidden],.rank-edit[hidden]{display:none!important}.rank-edit{align-self:flex-start;border:1px solid #735b90;border-radius:8px;background:#31243d;color:#e9d9ff;font-size:11px;padding:6px 10px;cursor:pointer}
+
+/* Rank and record alignment v19 */
+.scorebar{grid-template-columns:minmax(0,.68fr) minmax(0,1.85fr) 68px}
+.scorebar>div.score-best{position:relative;padding-right:100px;min-width:0}
+.scorebar .rank-open{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:5px;border:0;background:transparent;color:var(--lilac);font-weight:800;cursor:pointer;padding:2px;font-size:15px;line-height:1.1}
+.rank-globe{font-size:20px;line-height:1}
+.rank-place-group{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.rank-top-label{font-size:10px;color:var(--ink);font-weight:800;letter-spacing:.4px}
+#rank-place{font-size:17px;font-weight:850}
+@media(max-width:390px){.scorebar{grid-template-columns:minmax(0,.64fr) minmax(0,1.85fr) 61px;gap:5px}.scorebar>div.score-best{padding-right:85px}.scorebar .rank-open{right:4px;gap:3px}.rank-globe{font-size:20px}#rank-place{font-size:16px}}
