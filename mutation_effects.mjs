@@ -1,7 +1,7 @@
 // Physical effects for МЯУ-МУТАЦИИ. Used only when a ball explicitly has mutation metadata.
 // No random mutant drops are enabled in the game UI yet.
 import {
-  MUTATION_DEFINITIONS, activateMutation, advanceMutation, spendMutation,
+  MUTATION_DEFINITIONS, activateMutation, advanceMutation,
 } from './mutations.mjs';
 
 export const EFFECT_MAX_SPEED = 850;
@@ -56,7 +56,7 @@ function ninjaJump(world, ball) {
     (3 * ball.r)) * Math.min(1, headroom / (3 * ball.r)));
   ball.vx = cap(ball.vx + direction * horizontal);
   ball.vy = cap(ball.vy - vertical);
-  world.events.push({type: 'mutation', mutation: 'ninja', id: ball.id, x:ball.x, y:ball.y});
+  world.events.push({type: 'mutation', mutation: 'ninja', stage:'jump', id: ball.id, x:ball.x, y:ball.y, r:ball.r});
 }
 
 export function startMutationTick(world, dt) {
@@ -65,6 +65,7 @@ export function startMutationTick(world, dt) {
     if (!state) continue;
     if (state.phase === 'armed' && (state.type === 'ghost' || state.type === 'heavy')) {
       ball.mutation = activateMutation(state);
+      world.events.push({type:'mutation',mutation:state.type,stage:'start',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
     }
   }
   // Only previously activated magnets pull. Do not move bosses or phased ghosts.
@@ -85,11 +86,16 @@ export function startMutationTick(world, dt) {
 }
 
 export function registerImpact(world, ball, speed) {
+  if(ball.mutation?.type==='heavy' && ball.mutation.phase==='active' && speed>=150 &&
+     (ball.heavyImpactAt===undefined || world.time-ball.heavyImpactAt>=.45)){
+    ball.heavyImpactAt=world.time;
+    world.events.push({type:'mutation',mutation:'heavy',stage:'impact',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
+  }
   if (ball.mutation?.type !== 'spring' || ball.mutation.phase !== 'armed' ||
       speed < MUTATION_DEFINITIONS.spring.minImpactSpeed) return;
   ball.mutation = activateMutation(ball.mutation);
   (world.mutationPulses ??= []).push({id:ball.id,x:ball.x,y:ball.y,r:ball.r});
-  world.events.push({type:'mutation',mutation:'spring',id:ball.id,x:ball.x,y:ball.y});
+  world.events.push({type:'mutation',mutation:'spring',stage:'burst',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
 }
 
 function applyPulse(world, pulse) {
@@ -119,6 +125,7 @@ export function finishMutationTick(world, dt) {
       if (state.type === 'ghost' && next.phase === 'spent') {
         // Resolve overlap over several simulation steps, rather than instantly displacing the ball.
         ball.materializeUntil=world.time+.5;
+        world.events.push({type:'mutation',mutation:'ghost',stage:'end',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
       }
       ball.mutation=next;
     } else if (state.phase === 'armed' && (state.type === 'ninja' || state.type === 'magnet')) {
@@ -129,7 +136,7 @@ export function finishMutationTick(world, dt) {
         ninjaJump(world,ball);
       } else if (state.type === 'magnet' && ball.mutationSettle >= dt) {
         ball.mutation=activateMutation(state);
-        world.events.push({type:'mutation',mutation:'magnet',id:ball.id,x:ball.x,y:ball.y});
+        world.events.push({type:'mutation',mutation:'magnet',stage:'start',id:ball.id,x:ball.x,y:ball.y,r:ball.r});
       }
     }
   }

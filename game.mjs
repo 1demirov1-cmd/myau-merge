@@ -1,4 +1,4 @@
-import {World,RADII,RATES} from './physics.mjs?v=6';
+import {World,RADII,RATES} from './physics.mjs?v=7';
 import {rollMutation} from './mutations.mjs';
 import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs';
 const $=s=>document.querySelector(s), canvas=$('#game'), ctx=canvas.getContext('2d');
@@ -153,7 +153,7 @@ window.addEventListener('keydown',e=>{if(e.target.closest?.('button,a,input'))re
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause();if(document.hidden)persist();});
 window.addEventListener('pagehide',()=>persist());
 function mutationSound(type){if(!soundEnabled||!audioCtx||audioCtx.state!=='running')return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type==='heavy'?'triangle':'sine';o.frequency.setValueAtTime(type==='spring'?680:type==='ninja'?750:type==='magnet'?430:360,t);o.frequency.exponentialRampToValueAtTime(type==='spring'?320:type==='ninja'?950:type==='magnet'?600:240,t+.16);g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.11,t+.025);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.connect(g);g.connect(master);o.start(t);o.stop(t+.23);}catch{}}
-function handleEvents(){for(const e of world.events){if(e.type==='mutation'){const meta=MUTATION_UI[e.mutation];if(meta){mutationSound(e.mutation);if(!reduced)rings.push({x:e.x,y:e.y,r:20,life:.45,max:.45,color:meta.color});}}if(e.type==='bond'){refreshHelp();refreshUndo();toast('ЧАДОСЛИЯНИЕ: 1,5 СЕКУНДЫ');}if(e.type==='mur'){toast('МУР-ИМПУЛЬС!');}if(e.type==='merge'||e.type==='win'||e.type==='mur'){
+function handleEvents(){for(const e of world.events){if(e.type==='mutation'){const meta=MUTATION_UI[e.mutation];if(meta){mutationSound(e.mutation);const isImpact=e.stage==='impact',isEnd=e.stage==='end';const msg=e.mutation==='spring'?'ПРУЖИНА! БУМ!':e.mutation==='ninja'?'НИНДЗЯ! ПРЫЖОК!':e.mutation==='magnet'?'МАГНИТ! ПРИТЯЖЕНИЕ!':e.mutation==='heavy'?(isImpact?'ЖИРОБАС! МОЩНЫЙ УДАР!':'ЖИРОБАС! МАССА ×5'):isEnd?'ПРИЗРАК МАТЕРИАЛИЗОВАЛСЯ':'ПРИЗРАК! ПРОХОД СКВОЗЬ КОТОВ';toast(msg);if(!reduced){const radius=e.mutation==='spring'?(e.r??24)*3:e.mutation==='magnet'?(e.r??24)*4:(e.r??24)+4;rings.push({x:e.x,y:e.y,r:radius,life:isImpact?.48:.9,max:isImpact?.48:.9,color:meta.color,spread:e.mutation==='spring'?12:35});if(isImpact||e.mutation==='spring')shake=Math.max(shake,2.6);}}}if(e.type==='bond'){refreshHelp();refreshUndo();toast('ЧАДОСЛИЯНИЕ: 1,5 СЕКУНДЫ');}if(e.type==='mur'){toast('МУР-ИМПУЛЬС!');}if(e.type==='merge'||e.type==='win'||e.type==='mur'){
   meow(e.level);if(e.type==='merge')setHighest(e.level);if(e.kind)toast(e.kind==='kamilla'?'КАМИЛЛКАЧАД!':'ДЕМИРЧАД!');if(!reduced){shake=Math.min(4,1+e.level*.35);rings.push({x:e.x,y:e.y,r:RADII[e.level],life:.7,max:.7,color:COLORS[e.level]});for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=35+Math.random()*90;particles.push({x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.4,color:COLORS[e.level]});}}
   points.push({x:e.x,y:e.y-RADII[e.level],life:1,text:`+${e.points??2048}`});if(!seenMerge){seenMerge=true;$('#hint').innerHTML='<span class="hint-dot"></span> Больше кот → ниже мяу';}
 }if(e.type==='over')endScreen(false);
@@ -184,12 +184,45 @@ else for(const b of world.balls){
  const bonded=world.bond&&(b.id===world.bond.a||b.id===world.bond.b);
  const ghost=b.mutation?.type==='ghost'&&b.mutation.phase==='active';
   drawCat(b.level,b.x,b.y,b.r*(bonded?1+.04*Math.sin(world.bond.elapsed*15):1),b.angle,ghost?.4:1,!!bonded,b.kind);
-  if(b.mutation&&b.mutation.phase!=='spent')drawMutationBadge(b.x,b.y,b.r,b.mutation.type,ghost?.65:1);
+  if(b.mutation&&b.mutation.phase!=='spent'){drawMutationAura(b);drawMutationBadge(b.x,b.y,b.r,b.mutation.type,ghost?.75:1);}
 }
-  for(const ring of rings){const t=1-ring.life/ring.max;ctx.beginPath();ctx.arc(ring.x,ring.y,ring.r+t*50,0,Math.PI*2);ctx.globalAlpha=(1-t)*.7;ctx.strokeStyle=ring.color;ctx.lineWidth=2-t;ctx.stroke();ctx.globalAlpha=1;}
+  for(const ring of rings){const t=1-ring.life/ring.max;ctx.beginPath();ctx.arc(ring.x,ring.y,ring.r+t*(ring.spread??50),0,Math.PI*2);ctx.globalAlpha=(1-t)*.7;ctx.strokeStyle=ring.color;ctx.lineWidth=2-t;ctx.stroke();ctx.globalAlpha=1;}
   for(const p of particles){ctx.globalAlpha=Math.min(1,p.life*2);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,1.7,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;
   ctx.font='bold 17px -apple-system,sans-serif';ctx.textAlign='center';for(const p of points){ctx.globalAlpha=Math.min(1,p.life*2);ctx.fillStyle='#e5f9c1';ctx.fillText(p.text,p.x,p.y);}ctx.globalAlpha=1;
   if(world.danger>0){ctx.fillStyle=`rgba(255,100,120,${world.danger*.045})`;ctx.fillRect(0,0,W,110);}
+  ctx.restore();
+}
+// Strong, sustained visual feedback: a rare mutation must be obvious while it acts.
+function drawMutationAura(ball) {
+  const mutation=ball.mutation;
+  if(!mutation||mutation.phase==='spent')return;
+  const meta=MUTATION_UI[mutation.type];
+  if(!meta)return;
+  const r=ball.r,t=world.time,active=mutation.phase==='active';
+  ctx.save();ctx.translate(ball.x,ball.y);ctx.strokeStyle=meta.color;
+  ctx.lineWidth=mutation.type==='heavy'?4:2.6;
+  ctx.shadowColor=meta.color;ctx.shadowBlur=active?13:7;
+  ctx.globalAlpha=active?.86:.53;
+  const pulse=1+.045*Math.sin(t*7+ball.id);
+  ctx.beginPath();ctx.arc(0,0,(r+3)*pulse,0,Math.PI*2);ctx.stroke();
+  ctx.shadowBlur=0;
+  if(mutation.type==='ghost'){
+    ctx.globalAlpha=.7;ctx.setLineDash([4,5]);ctx.lineDashOffset=-t*20;
+    ctx.beginPath();ctx.arc(0,0,r+9,0,Math.PI*2);ctx.stroke();
+  } else if(mutation.type==='magnet'&&active){
+    ctx.globalAlpha=.25+.10*Math.sin(t*9);
+    ctx.setLineDash([7,9]);ctx.lineDashOffset=-t*12;
+    ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(0,0,Math.min(r*4,130),0,Math.PI*2);ctx.stroke();
+    ctx.globalAlpha=.6;ctx.setLineDash([]);ctx.beginPath();ctx.arc(0,0,r+13+4*Math.sin(t*8),0,Math.PI*2);ctx.stroke();
+  } else if(mutation.type==='spring'&&mutation.phase==='armed'){
+    ctx.globalAlpha=.65;ctx.beginPath();ctx.arc(0,0,r+9+2*Math.sin(t*10),0,Math.PI*2);ctx.stroke();
+  } else if(mutation.type==='ninja'&&mutation.phase==='armed'){
+    ctx.globalAlpha=.7;ctx.setLineDash([9,6]);ctx.lineDashOffset=t*24;
+    ctx.beginPath();ctx.arc(0,0,r+8,0,Math.PI*2);ctx.stroke();
+  } else if(mutation.type==='heavy'){
+    ctx.globalAlpha=.85;ctx.lineWidth=3.2;
+    ctx.beginPath();ctx.moveTo(-r*.6,r+8);ctx.lineTo(r*.6,r+8);ctx.stroke();
+  }
   ctx.restore();
 }
 function drawMutationBadge(x,y,r,type,opacity=1){const meta=type?MUTATION_UI[type]:null;if(!meta)return;ctx.save();ctx.globalAlpha=opacity;ctx.translate(x+r*.69,y-r*.72);ctx.beginPath();ctx.arc(0,0,Math.max(8,r*.24),0,Math.PI*2);ctx.fillStyle='#201827';ctx.fill();ctx.strokeStyle=meta.color;ctx.lineWidth=1.7;ctx.stroke();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`bold ${Math.max(10,r*.3)}px sans-serif`;ctx.fillStyle=meta.color;ctx.fillText(meta.symbol,0,1);ctx.restore();}

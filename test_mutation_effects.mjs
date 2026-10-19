@@ -13,6 +13,7 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} â
   step(normal,15);step(heavy,15);
   near(a.y,b.y);near(a.vy,b.vy);
   assert.equal(b.mutation.phase,'active');
+  assert(heavy.events.some(e=>e.type==='mutation'&&e.mutation==='heavy'&&e.stage==='start'));
   const ordinary=new World(), weighted=new World();
   ordinary.add(0,130,570,{vx:110});const ordinaryTarget=ordinary.add(1,170,570);
   weighted.add(0,130,570,{vx:110,mutationType:'heavy'});const heavyTarget=weighted.add(1,170,570);
@@ -28,6 +29,7 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} â
   const target=w.add(0,157,650-RADII[0]);
   step(w,16);
   assert.equal(spring.mutation.phase,'spent');
+  assert(w.events.some(e=>e.mutation==='spring'&&e.stage==='burst'&&e.r===spring.r));
   assert.equal(w.events.filter(e=>e.mutation==='spring').length,1);
   assert(target.vx>0,'spring impulse should push neighbor outwards');
   assert(Math.abs(target.vx)<=EFFECT_MAX_SPEED);
@@ -40,6 +42,7 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} â
   step(w,42);assert.equal(b.mutation.phase,'armed');
   step(w,20);
   assert.equal(b.mutation.phase,'spent');
+  assert(w.events.some(e=>e.mutation==='ninja'&&e.stage==='jump'));
   assert.equal(w.events.filter(e=>e.mutation==='ninja').length,1);
   const emitted=w.events.length;
   step(w,150);assert.equal(w.events.filter(e=>e.mutation==='ninja').length,1);
@@ -52,6 +55,7 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} â
   const matching=w.add(2,190,650-RADII[2]);
   const foreign=w.add(1,305,650-RADII[1]);
   step(w,1);assert.equal(mag.mutation.phase,'active');
+  assert(w.events.some(e=>e.mutation==='magnet'&&e.stage==='start'));
   const before=matching.x, foreignBefore=foreign.x;
   step(w,35);
   assert(matching.x<before-1,'magnet should attract same-level ordinary cat');
@@ -68,9 +72,11 @@ const near=(a,b,tolerance=.001)=>assert(Math.abs(a-b)<tolerance,`Expected ${a} â
   const w=new World();
   const ghost=w.add(0,140,500,{mutationType:'ghost'});
   w.add(0,140,500);
-  step(w,100);assert(isPhased(ghost));assert.equal(w.balls.length,2);
+  step(w,100);assert(isPhased(ghost));
+  assert(w.events.some(e=>e.mutation==='ghost'&&e.stage==='start'));assert.equal(w.balls.length,2);
   step(w,85);
   assert(!isPhased(ghost));
+  assert(w.events.some(e=>e.mutation==='ghost'&&e.stage==='end'));
   assert.equal(w.balls.length,1,'ghost should merge only after phase expires');
   assert.equal(w.balls[0].level,1);
   assert.equal(w.activeMutationCount(),0);

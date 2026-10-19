@@ -23,6 +23,15 @@ try:
         page=context.new_page()
         page.add_init_script("""Object.defineProperty(Crypto.prototype,'getRandomValues',
             {configurable:true,value:function(a){a[0]=4;return a;}});""")
+        page.add_init_script("""(() => {
+            window.__heavyAuraStrokes=0;
+            const original=CanvasRenderingContext2D.prototype.stroke;
+            CanvasRenderingContext2D.prototype.stroke=function(...args){
+              if(String(this.strokeStyle).toLowerCase()==='#ffd08a' && this.lineWidth>=3)
+                window.__heavyAuraStrokes++;
+              return original.apply(this,args);
+            };
+        })();""")
         page.on('pageerror',lambda e: errors.append(str(e)))
         page.goto(url,wait_until='networkidle',timeout=20000)
         page.locator('#start').click()
@@ -46,6 +55,10 @@ try:
         assert saved()['snapshot']['ui']['currentMutation']==mutation
         throw(.82)
         assert any(b.get('mutation') for b in saved()['snapshot']['world']['balls']), 'Special cat did not appear'
+        if mutation=='heavy':
+            assert page.evaluate('window.__heavyAuraStrokes')>0,'Heavy ability aura was not rendered'
+            print('BROWSER_HEAVY_AURA_PASS',page.evaluate('window.__heavyAuraStrokes'))
+            assert page.evaluate('window.__heavyAuraStrokes')>0,'Heavy glow was not rendered to canvas'
         assert page.locator('#undo').is_enabled()
         page.locator('#undo').click()
         assert saved()['snapshot']['ui']['throwCount']==4
