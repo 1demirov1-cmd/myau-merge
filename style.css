@@ -106,3 +106,6 @@
 .rank-top-label{font-size:10px;color:var(--ink);font-weight:800;letter-spacing:.4px}
 #rank-place{font-size:17px;font-weight:850}
 @media(max-width:390px){.scorebar{grid-template-columns:minmax(0,1.40fr) minmax(0,1.30fr) 61px;gap:5px}.scorebar>div.score-best{padding-right:80px}.scorebar .rank-open{right:4px;gap:3px}.rank-globe{font-size:20px}#rank-place{font-size:16px}}
+
+/* Mobile: instruction already appears above the dropping cat */
+@media(max-width:800px){.game-shell>.hint{display:none!important}}
