@@ -62,6 +62,30 @@ export class World {
         for(let j=i+1;j<this.balls.length;j++){
           const b=this.balls[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);const min=a.r+b.r;
           if(d>min+.2 || isPhased(a) || isPhased(b))continue;
+          // Vampire bites the first non-boss cat it physically touches.
+          // It stays unchanged; the victim loses two levels or disappears.
+          const vampire = a.mutation?.type==='vampire' && a.mutation.phase==='armed' ? a :
+            b.mutation?.type==='vampire' && b.mutation.phase==='armed' ? b : null;
+          if(vampire){
+            const victim=vampire===a?b:a;
+            if(victim.level<8){
+              vampire.mutation=spendMutation(vampire.mutation);
+              const oldLevel=victim.level;
+              if(oldLevel<2){
+                this.balls.splice(this.balls.indexOf(victim),1);
+              }else{
+                victim.level=oldLevel-2;
+                victim.r=RADII[victim.level];
+                victim.x=Math.max(victim.r,Math.min(this.width-victim.r,victim.x));
+                victim.y=Math.max(victim.r,Math.min(this.height-victim.r,victim.y));
+                victim.lock=this.time+.12;
+              }
+              this.events.push({type:'mutation',mutation:'vampire',stage:'bite',
+                id:vampire.id,targetId:victim.id,x:victim.x,y:victim.y,r:victim.r,
+                fromLevel:oldLevel,toLevel:oldLevel<2?null:victim.level});
+              merged=true;break;
+            }
+          }
           if(dy>0 && a.vy>=b.vy-20)registerTouchdown(this,a);
           if(dy<0 && b.vy>=a.vy-20)registerTouchdown(this,b);
           if(a.level===8&&b.level===8&&a.kind!==b.kind&&
