@@ -82,8 +82,9 @@ test('reconnect publishes a locally saved nickname',async()=>{
  };
  app.context.fakeFactory=()=>fakeClient;
  vm.runInContext('createClient = fakeFactory',app.context);
- await app.windowEvents.get('online')();
- assert.equal(app.storage.get('myau-rank-pending'),undefined);
+ app.windowEvents.get('online')();
+ await new Promise(resolve=>setTimeout(resolve,25));
+ assert.equal(app.storage.get('myau-rank-pending'),undefined,app.el('#rank-status').textContent);
  assert.equal(app.el('#rank-place').textContent,'#1');
  assert.equal(app.storage.get('myau-rank-choice'),'joined');
 });
