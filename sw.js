@@ -1,11 +1,11 @@
 /* МЯУ offline assets. Version bumps should accompany future releases. */
-const CACHE = 'myau-pwa-v29-20261019';
+const CACHE = 'myau-pwa-v30-20261021';
 const PREFIX = 'myau-pwa-';
 const CORE = [
   "./",
   "./index.html",
-  "./game.mjs?v=20",
-  "./leaderboard.mjs?v=4",
+  "./game.mjs?v=21",
+  "./leaderboard.mjs?v=5",
   "./physics.mjs?v=16",
   "./mutation_effects.mjs?v=9",
   "./game_state.mjs?v=3",
@@ -62,6 +62,14 @@ self.addEventListener('fetch', event => {
       }
     })());
     return;
+  }
+  // Image assets are immutable by release: prefer cache for reliable offline sprites.
+  if (url.pathname.includes('/assets/') && /\.(webp|png|svg)$/i.test(url.pathname)) {
+    event.respondWith((async()=>{
+      const cached=await caches.match(req);
+      if(cached)return cached;
+      try{const live=await fetch(req);if(live.ok){const cache=await caches.open(CACHE);await cache.put(req,live.clone())}return live}catch{return Response.error()}
+    })());return;
   }
   // Online-first for scripts and styles: never mix old PWA code with new HTML.
   event.respondWith((async () => {
