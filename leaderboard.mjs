@@ -1,4 +1,6 @@
-import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.75.0';
+let createClient;
+async function loadClient(){if(createClient)return createClient;const mod=await import('https://esm.sh/@supabase/supabase-js@2.75.0');createClient=mod.createClient;return createClient;}
+
 const URL='https://udeheaejvqwqsubktnml.supabase.co';
 const KEY=globalThis.MYAU_SUPABASE_PUBLISHABLE_KEY||'';
 const $=s=>document.querySelector(s);
@@ -34,7 +36,7 @@ function setPlace(s){place.textContent=s}
 async function init(){
  if(!KEY){msg('Рейтинг ожидает подключения базы данных');setPlace('—');return}
  try{
-  client=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+  client=(await loadClient())(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true}});
   let {data:{session}}=await client.auth.getSession();
   if(!session){const r=await client.auth.signInAnonymously();if(r.error)throw r.error;session=r.data.session}
   user=session.user;
@@ -44,7 +46,7 @@ async function init(){
   bestSent=Number(r.data?.best_score)||0;
   if(nick){$('#rank-nick').value=nick;await sync()}
   else {msg('Укажи ник, чтобы участвовать в рейтинге');setPlace('—')}
- }catch(e){msg('Не удалось подключить рейтинг: '+(e.message||'ошибка сети'));setPlace('—')}
+ }catch(e){client=null;user=null;msg('Не удалось подключить рейтинг: '+(e.message||'ошибка сети'));setPlace('—')}
 }
 async function sync(){
  if(!client||!user||!nick||busy)return;
@@ -64,8 +66,7 @@ async function sync(){
 async function show(){
  modal.hidden=false;updateProfile();
  if(!client){await init();if(!client)return}
- const r=await client.from('myau_players').select('nickname,best_score,user_id').order('best_score',{ascending:false}).order('updated_at',{ascending:true}).limit(100);
- if(r.error){msg('Не удалось загрузить ТОП-100');return}
+ let r;try{r=await client.from('myau_players').select('nickname,best_score,user_id').order('best_score',{ascending:false}).order('updated_at',{ascending:true}).limit(100);if(r.error)throw r.error;}catch(e){msg('Не удалось загрузить ТОП-100: '+(e.message||'ошибка сети'));return}
  body.replaceChildren();
  (r.data||[]).forEach((p,i)=>{const tr=document.createElement('tr');if(p.user_id===user?.id)tr.className='mine';const a=document.createElement('td'),b=document.createElement('td'),c=document.createElement('td');a.textContent=String(i+1);b.textContent=p.nickname;c.textContent=Number(p.best_score).toLocaleString('ru-RU');tr.append(a,b,c);body.append(tr)});
  if(!r.data?.length)msg('Пока нет игроков. Стань первым!');
@@ -110,6 +111,7 @@ $('#rank-save').addEventListener('click',async()=>{
  await sync();await show();
 });
 window.addEventListener('myau-best-updated',()=>{if(client&&nick)sync()});
+window.addEventListener('online',()=>{if(!client)init();else if(nick)sync()});
 if(localStorage.getItem('myau-nickname')){nick=clean(localStorage.getItem('myau-nickname'));updateProfile();init();}
 else if(localStorage.getItem('myau-rank-choice')==='skip'){skip.checked=true;$('#rank-nick').disabled=true;$('#rank-save').disabled=true;}
 else {modal.hidden=false;msg('Придумай ник для мирового ТОПа или выбери «Играть без ника»');}
