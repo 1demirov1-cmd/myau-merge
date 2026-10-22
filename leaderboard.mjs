@@ -9,6 +9,36 @@ async function loadClient(){
 const URL='https://udeheaejvqwqsubktnml.supabase.co';
 const KEY=globalThis.MYAU_SUPABASE_PUBLISHABLE_KEY||'';
 const $=s=>document.querySelector(s);
+const TOP_CACHE='myau-last-world-top-v1';
+const RANK_USER_KEY='myau-rank-user-id';
+let topLastUpdated=0,topLoading=false;
+function restoreTop(){
+ try{
+  const old=JSON.parse(localStorage.getItem(TOP_CACHE));
+  return old&&Array.isArray(old.rows)&&old.rows.length<=100&&old.rows.every(
+   x=>x&&typeof x.nickname==='string'&&Number.isFinite(x.best_score)&&typeof x.user_id==='string'
+  )?old:null;
+ }catch{return null}
+}
+function renderTop(rows){
+ body.replaceChildren();
+ rows.forEach((p,i)=>{
+  const tr=document.createElement('tr');
+  if(p.user_id===user?.id)tr.className='mine';
+  const a=document.createElement('td'),b=document.createElement('td'),c=document.createElement('td');
+  a.textContent=String(i+1);b.textContent=p.nickname;
+  c.textContent=Number(p.best_score).toLocaleString('ru-RU');
+  tr.append(a,b,c);body.append(tr);
+ });
+}
+function showCachedTop(){
+ const old=restoreTop();
+ if(!old)return false;
+ renderTop(old.rows);
+ const time=new Date(old.at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+ msg('Показан сохранённый ТОП от '+time+'. Проверяем обновления…');
+ return true;
+}
 function clean(s){return String(s||'').trim().replace(/[<>]/g,'').slice(0,20)}
 function score(){return Math.max(0,Math.min(100000000,Number(localStorage.getItem('meow-best'))||0))}
 async function limited(p,ms=25000,stage='связь с сервером'){
@@ -26,6 +56,9 @@ const headerNick=$('#header-nick'),profile=$('#rank-profile'),editButton=$('#ran
 const skipLabel=$('.rank-skip'),skip=$('#rank-skip'),saveButton=$('#rank-save'),nickInput=$('#rank-nick');
 let client=null,user=null,nick=clean(localStorage.getItem('myau-nickname')),bestSent=0,busy=false,editing=false,connecting=null,saving=false;
 let serverNick='',resyncAfterBusy=false,syncTimer=null;
+const retryButton=$('#rank-retry');
+function showRetry(){retryButton.hidden=false}
+function hideRetry(){retryButton.hidden=true}
 function markPending(){
  if(!nick||localStorage.getItem('myau-rank-choice')==='skip')return;
  localStorage.setItem('myau-rank-pending','yes');
@@ -62,18 +95,33 @@ async function connectOnce(){
  msg(nick?'Подключаем мировой рейтинг. Ник уже сохранён на устройстве…':'Подключаем мировой рейтинг…');
  try{
   const factory=await limited(loadClient(),15000,'загрузка библиотеки рейтинга');
-  const active=client||factory(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+  // iOS PWAs can leave navigator.locks stuck after suspension. Our writes
+  // are serialized in this client; skip browser-level locking only.
+  const active=client||factory(URL,KEY,{auth:{
+   persistSession:true,autoRefreshToken:true,lock:(_name,_timeout,fn)=>fn()
+  }});
   const old=await limited(active.auth.getSession(),30000,'проверка прежнего входа');
   // Never replace an existing anonymous account when token refresh merely fails.
   if(old.error)throw old.error;
   let session=old.data?.session;
   if(!session){
+   // Never silently replace a saved anonymous identity with a new one.
+   const authKey='sb-'+new URL(URL).hostname.split('.')[0]+'-auth-token';
+   if(localStorage.getItem(RANK_USER_KEY)||localStorage.getItem(authKey)){
+    throw new Error('прежняя сессия не восстановилась; повтори подключение без очистки данных игры');
+   }
    const r=await limited(active.auth.signInAnonymously(),30000,'авторизация игрока');
    if(r.error)throw r.error;
    session=r.data?.session;
   }
   if(!session?.user?.id)throw new Error('авторизация не завершена');
+  const pinnedId=localStorage.getItem(RANK_USER_KEY);
+  if(pinnedId&&pinnedId!==session.user.id){
+   throw new Error('найдена другая игровая сессия; старую запись не перезаписываем');
+  }
+  if(!pinnedId)localStorage.setItem(RANK_USER_KEY,session.user.id);
   client=active;user=session.user;
+  hideRetry();
   const r=await limited(client.from('myau_players').select('nickname,best_score').eq('user_id',user.id).maybeSingle(),30000,'получение профиля');
   if(r.error)throw r.error;
   // A locally saved nickname takes priority over an older server response.
@@ -87,7 +135,8 @@ async function connectOnce(){
    if(localStorage.getItem('myau-rank-choice')==='skip'){
     msg('Рейтинг открыт в режиме гостя');
    }else if(!r.data||score()>bestSent||nick!==serverNick||localStorage.getItem('myau-rank-pending')==='yes'){
-    await sync();
+    // The TOP is loaded independently of a slow personal-score upload.
+    setTimeout(()=>{sync()},0);
    }else{
     msg('Ник и рекорд сохранены в мировом рейтинге');
     await refreshPlace(bestSent);
@@ -96,7 +145,9 @@ async function connectOnce(){
   return true;
  }catch(e){
   client=null;user=null;setPlace('—');
-  msg(nick?offlineMessage(e.message||'ошибка сети'):'Не удалось подключить рейтинг: '+(e.message||'ошибка сети'));
+  showRetry();
+  msg(nick?offlineMessage(e.message||'ошибка сети'):'Не удалось подключить рейтинг: '+(e.message||'ошибка сети')+
+   '. Нажми «Повторить»');
   return false;
  }
 }
@@ -167,22 +218,30 @@ async function sync(){
 }
 async function show(){
  modal.hidden=false;updateProfile();
- if(!client||!user){const ok=await init();if(!ok)return}
+ if(topLoading)return;
+ topLoading=true;
  try{
+  const hadCache=showCachedTop();
+  if(!client||!user){const ok=await init();if(!ok)return}
+  msg(hadCache?'Обновляем сохранённый мировой ТОП…':'Загружаем мировой ТОП…');
   const r=await limited(client.from('myau_players').select('nickname,best_score,user_id').order('best_score',{ascending:false}).order('updated_at',{ascending:true}).limit(100),30000,'загрузка ТОП-100');
   if(r.error)throw r.error;
-  body.replaceChildren();
-  (r.data||[]).forEach((p,i)=>{
-   const tr=document.createElement('tr');
-   if(p.user_id===user?.id)tr.className='mine';
-   const a=document.createElement('td'),b=document.createElement('td'),c=document.createElement('td');
-   a.textContent=String(i+1);b.textContent=p.nickname;c.textContent=Number(p.best_score).toLocaleString('ru-RU');
-   tr.append(a,b,c);body.append(tr);
-  });
-  if(!r.data?.length)msg('Пока нет игроков. Стань первым!');
- }catch(e){msg('Не удалось загрузить ТОП-100: '+(e.message||'ошибка сети'))}
+  const rows=(r.data||[]).map(p=>({nickname:p.nickname,best_score:Number(p.best_score),user_id:p.user_id}));
+  renderTop(rows);
+  const at=Date.now();topLastUpdated=at;
+  try{localStorage.setItem(TOP_CACHE,JSON.stringify({at,rows}))}catch{}
+  hideRetry();
+  if(!rows.length)msg('Пока нет игроков. Стань первым!');
+  else if(localStorage.getItem('myau-rank-pending')==='yes')msg('ТОП обновлён. Твой новый рекорд ожидает отправки на сервер.');
+  else msg('Мировой ТОП обновлён');
+ }catch(e){
+  showRetry();
+  msg('Не удалось обновить ТОП: '+(e.message||'ошибка сети')+
+   '. Можно смотреть сохранённый список и повторить подключение.');
+ }finally{topLoading=false}
 }
 $('#rank-open').addEventListener('click',show);
+retryButton.addEventListener('click',()=>{show()});
 function applySkip(){
  const checked=skip.checked;
  nickInput.disabled=checked;saveButton.disabled=checked;
@@ -219,17 +278,20 @@ saveButton.addEventListener('click',async()=>{
 });
 window.addEventListener('myau-best-updated',()=>{if(nick)scheduleSync(1200)});
 window.addEventListener('online',()=>{
+ if(!modal.hidden)show();
  if(nick&&localStorage.getItem('myau-rank-choice')!=='skip'){
   if(!client||!user)init();else sync();
  }
 });
 document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden&&!modal.hidden&&Date.now()-topLastUpdated>20000)show();
  if(!document.hidden&&localStorage.getItem('myau-rank-pending')==='yes'){
   if(!client||!user)init();else sync();
  }
 });
 // Retry pending records even when a phone silently reconnects without an online event.
 setInterval(()=>{
+ if(!document.hidden&&!modal.hidden&&Date.now()-topLastUpdated>60000)show();
  if(!document.hidden&&localStorage.getItem('myau-rank-pending')==='yes'&&nick){
   if(!client||!user)init();else sync();
  }
