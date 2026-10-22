@@ -28,9 +28,9 @@ function resetAudioOnGesture(){
  audioCtx=undefined;master=undefined;buffer=undefined;loadingAudio=undefined;
  if(old&&old.state!=='closed')try{old.close().catch(()=>{})}catch{}
 }
-function unlockAudio(){
+function unlockAudio(fromGesture=false){
  try{
-  resetAudioOnGesture();
+  if(fromGesture)resetAudioOnGesture();
   if(!audioCtx){
    const AC=window.AudioContext||window.webkitAudioContext;
    if(!AC)return Promise.resolve();
@@ -68,7 +68,7 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('pagehide',audioHidden);
 window.addEventListener('pageshow',audioForeground);
 window.addEventListener('focus',audioForeground);
-function audioGestureRecovery(){if(soundEnabled&&audioNeedsReset)unlockAudio()}
+function audioGestureRecovery(){if(soundEnabled&&audioNeedsReset)unlockAudio(true)}
 document.addEventListener('pointerdown',audioGestureRecovery,{capture:true,passive:true});
 document.addEventListener('touchstart',audioGestureRecovery,{capture:true,passive:true});
 document.addEventListener('keydown',audioGestureRecovery,{capture:true});
