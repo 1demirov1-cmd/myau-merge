@@ -1,11 +1,11 @@
 /* МЯУ offline assets. Version bumps should accompany future releases. */
-const CACHE = 'myau-pwa-v34-20261022';
+const CACHE = 'myau-pwa-v35-20261022';
 const PREFIX = 'myau-pwa-';
 const CORE = [
   "./",
   "./index.html",
-  "./game.mjs?v=21",
-  "./leaderboard.mjs?v=9",
+  "./game.mjs?v=22",
+  "./leaderboard.mjs?v=10",
   "./vendor/supabase.mjs",
   "./physics.mjs?v=16",
   "./mutation_effects.mjs?v=9",
@@ -72,7 +72,23 @@ self.addEventListener('fetch', event => {
       try{const live=await fetch(req);if(live.ok){const cache=await caches.open(CACHE);await cache.put(req,live.clone())}return live}catch{return Response.error()}
     })());return;
   }
-  // Online-first for scripts and styles: never mix old PWA code with new HTML.
+  // The URLs for game modules/styles are versioned. Keep them available when
+  // iOS temporarily loses network access while reopening an installed PWA.
+  const immutableGameResource=(url.pathname.endsWith('/vendor/supabase.mjs')||
+    (url.searchParams.has('v')&&/\.(mjs|css|js)$/.test(url.pathname)));
+  if(immutableGameResource){
+    event.respondWith((async()=>{
+      const cached=await caches.match(req);
+      if(cached)return cached;
+      try{
+        const live=await fetch(req);
+        if(live.ok){const cache=await caches.open(CACHE);await cache.put(req,live.clone())}
+        return live;
+      }catch{return Response.error()}
+    })());
+    return;
+  }
+  // Online-first for navigation and non-versioned resources.
   event.respondWith((async () => {
     try {
       const live = await fetch(req, {cache:'no-store'});
