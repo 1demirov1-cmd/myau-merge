@@ -2,7 +2,7 @@
 // Effects activate only on explicit mutation metadata.
 import {
   MUTATION_DEFINITIONS, activateMutation, advanceMutation,
-} from './mutations.mjs?v=5';
+} from './mutations.mjs?v=6';
 
 export const EFFECT_MAX_SPEED = 850;
 
