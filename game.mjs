@@ -1,7 +1,7 @@
-import {World,RADII,RATES} from './physics.mjs?v=14';
+import {World,RADII,RATES} from './physics.mjs?v=16';
 import {rollMutation} from './mutations.mjs?v=6';
 import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs?v=3';
-import {getMagnetPairs} from './mutation_effects.mjs?v=7';
+import {getMagnetPairs} from './mutation_effects.mjs?v=9';
 const $=s=>document.querySelector(s), canvas=$('#game'), ctx=canvas.getContext('2d');
 const NAMES=['Крошка','Бананчик','Серьёзный','Улыбашка','Батя','Гига-кот','Мегачад','Абсолют','Демирчад'];
 const BOSS_LEVEL=NAMES.length-1;
