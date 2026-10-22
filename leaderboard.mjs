@@ -106,7 +106,7 @@ async function connectOnce(){
   let session=old.data?.session;
   if(!session){
    // Never silently replace a saved anonymous identity with a new one.
-   const authKey='sb-'+new URL(URL).hostname.split('.')[0]+'-auth-token';
+   const authKey='sb-'+URL.replace(/^https?:\/\//,'').split('.')[0]+'-auth-token';
    if(localStorage.getItem(RANK_USER_KEY)||localStorage.getItem(authKey)){
     throw new Error('прежняя сессия не восстановилась; повтори подключение без очистки данных игры');
    }
