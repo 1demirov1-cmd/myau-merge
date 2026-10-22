@@ -144,7 +144,7 @@ function rebuildTrack(){
     b.title=`${label} — послушать мяу`;b.setAttribute('aria-label',`${label}: послушать мяу, уровень ${i+1}`);
     if(secret){const mark=document.createElement('span');mark.className='secret-mark';mark.textContent='?';mark.setAttribute('aria-hidden','true');b.append(mark);}
     else{const img=document.createElement('img');img.src=sprites[i]?sprites[i].toDataURL('image/png'):`assets/cat-${i}.webp`;img.alt='';b.append(img);}
-    b.addEventListener('click',()=>{soundEnabled=true;save('meow-sound',true);updateSound();unlockAudio().then(()=>{hush();meow(i);});toast(`${secret?'???':name} · ${i+1}/${NAMES.length}`);});
+    b.addEventListener('click',()=>{soundEnabled=true;save('meow-sound',true);updateSound();unlockAudio(true).then(()=>{hush();meow(i);});toast(`${secret?'???':name} · ${i+1}/${NAMES.length}`);});
     track.append(b);
   });
 }
@@ -165,17 +165,17 @@ function setHighest(level){if(level<=highest)return;highest=level;$('#level-labe
 function toast(text){const el=$('#toast');el.textContent=text;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1900);}
 // Optional presentation: removing the hint must never stop game physics.
 function setHint(html){const hint=document.querySelector('#hint');if(hint)hint.innerHTML=html;}
-function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;announcedMutations=new Set();undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];mutationLabels=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;setHint('<span class="hint-dot"></span> Веди пальцем и отпусти кота');rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio();}
+function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;announcedMutations=new Set();undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];mutationLabels=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;setHint('<span class="hint-dot"></span> Веди пальцем и отпусти кота');rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio(true);}
 $('#start').addEventListener('click',start);
 function undoDrop(){if(state!=='playing'||!undoSnapshot||world.bond)return;const before=undoSnapshot;const previouslyAnnounced=[...announcedMutations];undoSnapshot=null;if(!applySnapshot(before))return;for(const type of previouslyAnnounced)announcedMutations.add(type);state='playing';refreshUndo();toast('Последний бросок отменён');persist();}
 $('#undo').onclick=undoDrop;
 try{const available=decodeSave(localStorage.getItem('myau-game-v1'),()=>new World({random:gameRandom}));if(available){const button=document.createElement('button');button.id='continue';button.className='secondary';button.textContent='Продолжить сохранённую игру ↗';$('#start').after(button);button.onclick=()=>{if(!applySnapshot(available.restored&&JSON.parse(localStorage.getItem('myau-game-v1')).snapshot))return;undoSnapshot=available.undo;pausedFrom=state==='paused'?pausedFrom:state;state='paused';resume();toast('Партия восстановлена');};}}catch{}
 function showOverlay(html){helpMode=false;refreshHelp();$('#overlay-content').innerHTML=html;$('#overlay').hidden=false;dragging=false;activePointer=null;}
 function pause(){if(state!=='playing'&&state!=='finale')return;pausedFrom=state;state='paused';hush();persist();showOverlay('<span class="pill">КОТЫ ОТДЫХАЮТ</span><img class="end-cat" src="assets/cat-3.webp" alt="Кот отдыхает"><h2>Мяу-пауза</h2><p>Все коты на своих местах.</p><button class="primary" id="resume">Продолжить ↗</button>');$('#resume').onclick=resume;}
-function resume(){state=pausedFrom;helpMode=false;refreshHelp();refreshUndo();$('#overlay').hidden=true;accumulator=0;lastTime=0;persist();unlockAudio();}
+function resume(){state=pausedFrom;helpMode=false;refreshHelp();refreshUndo();$('#overlay').hidden=true;accumulator=0;lastTime=0;persist();unlockAudio(true);}
 $('#pause').onclick=()=>{if(state==='playing'||state==='finale')pause();else if(state==='paused')resume();};
 $('#restart').onclick=()=>{if(state==='intro')return;const previous=state,previousRunning=state==='paused'?pausedFrom:state;state='confirm';hush();showOverlay('<span class="pill">НОВАЯ ПОПЫТКА</span><h2 style="margin-top:24px">Начать сначала?</h2><p>Текущие коты исчезнут.<br>Рекорд останется.</p><button class="primary" id="confirm-restart">Новая игра ↻</button><button class="secondary" id="cancel-restart">Вернуться</button>');$('#confirm-restart').onclick=start;$('#cancel-restart').onclick=()=>{if(previous==='over'||previous==='won'){state=previous;endScreen(previous==='won')}else{pausedFrom=previousRunning;resume();}};};
-$('#sound').onclick=()=>{soundEnabled=!soundEnabled;save('meow-sound',soundEnabled);updateSound();if(soundEnabled)unlockAudio().then(()=>meow(current,true));else hush();};
+$('#sound').onclick=()=>{soundEnabled=!soundEnabled;save('meow-sound',soundEnabled);updateSound();if(soundEnabled)unlockAudio(true).then(()=>meow(current,true));else hush();};
 function endScreen(won){
   state=won?'won':'over';clearSaved();undoSnapshot=null;refreshUndo();
   showOverlay(won
@@ -198,7 +198,7 @@ function drop(){
  updateNext();refreshUndo();persist();
 }
 function aimAt(clientX){const r=canvas.getBoundingClientRect();aim=Math.max(RADII[current]+2,Math.min(W-RADII[current]-2,(clientX-r.left)/r.width*W));}
-canvas.addEventListener('pointerdown',e=>{if(state!=='playing'||world.bond||activePointer!==null||!e.isPrimary)return;e.preventDefault();if(helpMode){chooseHelpCat(e.clientX,e.clientY);return;}activePointer=e.pointerId;dragging=true;aimAt(e.clientX);canvas.setPointerCapture(e.pointerId);unlockAudio();});
+canvas.addEventListener('pointerdown',e=>{if(state!=='playing'||world.bond||activePointer!==null||!e.isPrimary)return;e.preventDefault();if(helpMode){chooseHelpCat(e.clientX,e.clientY);return;}activePointer=e.pointerId;dragging=true;aimAt(e.clientX);canvas.setPointerCapture(e.pointerId);unlockAudio(true);});
 canvas.addEventListener('pointermove',e=>{if(state==='playing'&&(activePointer===e.pointerId||e.pointerType==='mouse'))aimAt(e.clientX);});
 canvas.addEventListener('pointerup',e=>{if(e.pointerId!==activePointer)return;e.preventDefault();aimAt(e.clientX);dragging=false;activePointer=null;drop();});
 canvas.addEventListener('pointercancel',()=>{dragging=false;activePointer=null;});
