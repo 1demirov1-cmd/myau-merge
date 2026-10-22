@@ -140,6 +140,8 @@ test('temporary authentication error must never replace the previous anonymous a
   'meow-best':'14364'
  });
  let newAnonymousSignups=0;
+ // Let the initial no-network import attempt settle before testing a later reconnect.
+ await sleep(0);
  app.context.fakeFactory=()=>({
   auth:{
    getSession:async()=>({data:{session:null},error:new Error('token refresh timed out')}),
