@@ -142,6 +142,8 @@ async function sync(){
    if(score()<=bestSent&&nick===sendingNick&&!resyncAfterBusy){published=true;break}
   }
   if(!published){moreNeeded=true;markPending();return false}
+  // The latest score was already included in this upload; discard its old debounce timer.
+  if(syncTimer!==null){clearTimeout(syncTimer);syncTimer=null}
   localStorage.removeItem('myau-rank-pending');
   localStorage.setItem('myau-rank-choice','joined');
   editing=false;updateProfile();
