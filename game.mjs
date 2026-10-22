@@ -17,16 +17,67 @@ const sprites=[],rawImages=[],W=360,H=650;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const audioBytes=fetch('./assets/meow.wav').then(r=>{if(!r.ok)throw new Error('audio');return r.arrayBuffer()}).catch(()=>null);
 let audioCtx,buffer,master,loadingAudio,voices=[];
-function unlockAudio(){
-  try{
-    if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return Promise.resolve();audioCtx=new AC();master=audioCtx.createGain();master.gain.value=.65;const limiter=audioCtx.createDynamicsCompressor();limiter.threshold.value=-14;limiter.knee.value=10;limiter.ratio.value=5;master.connect(limiter);limiter.connect(audioCtx.destination);}
-    if(audioCtx.state!=='running')audioCtx.resume().catch(()=>{});
-    if(!loadingAudio)loadingAudio=audioBytes.then(data=>data?audioCtx.decodeAudioData(data.slice(0)):null).then(b=>{buffer=b}).catch(()=>{});
-    return loadingAudio;
-  }catch{return Promise.resolve()}
+let audioNeedsReset=false;
+// iOS WebKit can leave AudioContext interrupted, or even "running" but silent,
+// after switching apps. Build a fresh context on the next user gesture.
+function resetAudioOnGesture(){
+ if(!audioNeedsReset)return;
+ audioNeedsReset=false;
+ hush();
+ const old=audioCtx;
+ audioCtx=undefined;master=undefined;buffer=undefined;loadingAudio=undefined;
+ if(old&&old.state!=='closed')try{old.close().catch(()=>{})}catch{}
 }
+function unlockAudio(){
+ try{
+  resetAudioOnGesture();
+  if(!audioCtx){
+   const AC=window.AudioContext||window.webkitAudioContext;
+   if(!AC)return Promise.resolve();
+   audioCtx=new AC();
+   master=audioCtx.createGain();master.gain.value=.65;
+   const limiter=audioCtx.createDynamicsCompressor();
+   limiter.threshold.value=-14;limiter.knee.value=10;limiter.ratio.value=5;
+   master.connect(limiter);limiter.connect(audioCtx.destination);
+  }
+  const ctx=audioCtx;
+  if(ctx.state!=='running'){
+   Promise.resolve(ctx.resume()).catch(()=>{if(ctx===audioCtx)audioNeedsReset=true});
+  }
+  if(!loadingAudio){
+   loadingAudio=audioBytes
+    .then(data=>data?ctx.decodeAudioData(data.slice(0)):null)
+    .then(b=>{if(ctx===audioCtx)buffer=b})
+    .catch(()=>{});
+  }
+  return loadingAudio;
+ }catch{return Promise.resolve()}
+}
+function audioHidden(){
+ if(audioCtx){audioNeedsReset=true;hush()}
+}
+function audioForeground(){
+ if(!soundEnabled||!audioCtx||document.hidden)return;
+ // Try automatic recovery; iOS may still require a user gesture.
+ if(audioCtx.state!=='running')try{Promise.resolve(audioCtx.resume()).catch(()=>{})}catch{}
+}
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden){audioHidden();persist()}
+ else audioForeground();
+});
+window.addEventListener('pagehide',audioHidden);
+window.addEventListener('pageshow',audioForeground);
+window.addEventListener('focus',audioForeground);
+function audioGestureRecovery(){if(soundEnabled&&audioNeedsReset)unlockAudio()}
+document.addEventListener('pointerdown',audioGestureRecovery,{capture:true,passive:true});
+document.addEventListener('touchstart',audioGestureRecovery,{capture:true,passive:true});
+document.addEventListener('keydown',audioGestureRecovery,{capture:true});
 function meow(level,quiet=false){
-  if(!soundEnabled||!audioCtx||audioCtx.state!=='running')return;
+  if(!soundEnabled)return;
+  if(!audioCtx||audioCtx.state!=='running'){
+   unlockAudio().then(()=>{if(soundEnabled&&audioCtx?.state==='running')meow(level,quiet)});
+   return;
+  }
   const t=audioCtx.currentTime;
   if(buffer){
     while(voices.length>=3){const v=voices.shift();try{v.g.gain.cancelScheduledValues(t);v.g.gain.setTargetAtTime(.001,t,.02);v.s.stop(t+.09)}catch{}}
