@@ -2,7 +2,7 @@
 let createClient;
 async function loadClient(){
  if(createClient)return createClient;
- const mod=await import('https://esm.sh/@supabase/supabase-js@2.75.0');
+ const mod=await import('./vendor/supabase.mjs');
  createClient=mod.createClient;
  return createClient;
 }
@@ -11,9 +11,9 @@ const KEY=globalThis.MYAU_SUPABASE_PUBLISHABLE_KEY||'';
 const $=s=>document.querySelector(s);
 function clean(s){return String(s||'').trim().replace(/[<>]/g,'').slice(0,20)}
 function score(){return Math.max(0,Math.min(100000000,Number(localStorage.getItem('meow-best'))||0))}
-async function limited(p,ms=12000){
+async function limited(p,ms=25000,stage='связь с сервером'){
  let timer;
- try{return await Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('превышено время ожидания сети')),ms)})])}
+ try{return await Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('превышено время ожидания сети ('+stage+')')),ms)})])}
  finally{clearTimeout(timer)}
 }
 if(localStorage.getItem('myau-rank-reset-v1')!=='done'){
@@ -61,18 +61,20 @@ async function connectOnce(){
  if(!KEY){msg('Рейтинг ожидает подключения базы данных');setPlace('—');return false}
  msg(nick?'Подключаем мировой рейтинг. Ник уже сохранён на устройстве…':'Подключаем мировой рейтинг…');
  try{
-  const factory=await limited(loadClient(),10000);
+  const factory=await limited(loadClient(),15000,'загрузка библиотеки рейтинга');
   const active=client||factory(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-  const old=await limited(active.auth.getSession());
+  const old=await limited(active.auth.getSession(),30000,'проверка прежнего входа');
+  // Never replace an existing anonymous account when token refresh merely fails.
+  if(old.error)throw old.error;
   let session=old.data?.session;
   if(!session){
-   const r=await limited(active.auth.signInAnonymously());
+   const r=await limited(active.auth.signInAnonymously(),30000,'авторизация игрока');
    if(r.error)throw r.error;
    session=r.data?.session;
   }
   if(!session?.user?.id)throw new Error('авторизация не завершена');
   client=active;user=session.user;
-  const r=await limited(client.from('myau_players').select('nickname,best_score').eq('user_id',user.id).maybeSingle());
+  const r=await limited(client.from('myau_players').select('nickname,best_score').eq('user_id',user.id).maybeSingle(),30000,'получение профиля');
   if(r.error)throw r.error;
   // A locally saved nickname takes priority over an older server response.
   nick=clean(localStorage.getItem('myau-nickname')||r.data?.nickname);
@@ -105,7 +107,7 @@ async function init(){
 }
 async function refreshPlace(record){
  try{
-  const ahead=await limited(client.from('myau_players').select('user_id',{count:'exact',head:true}).gt('best_score',record));
+  const ahead=await limited(client.from('myau_players').select('user_id',{count:'exact',head:true}).gt('best_score',record),25000,'расчёт места');
   if(ahead.error)throw ahead.error;
   // Do not display a stale placement while a newer local record is waiting.
   if(score()>bestSent||localStorage.getItem('myau-rank-pending')==='yes'){setPlace('…');return}
@@ -130,7 +132,7 @@ async function sync(){
    // Request the actual stored row: 2xx alone is not proof that this score was saved.
    const r=await limited(client.from('myau_players')
     .upsert({user_id:user.id,nickname:sendingNick,best_score:best},{onConflict:'user_id'})
-    .select('user_id,nickname,best_score').single());
+    .select('user_id,nickname,best_score').single(),30000,'отправка рекорда');
    if(r.error)throw r.error;
    const confirmed=Number(r.data?.best_score);
    if(r.data?.user_id!==user.id||r.data?.nickname!==sendingNick||
@@ -153,7 +155,7 @@ async function sync(){
  }catch(e){
   markPending();setPlace('—');editing=true;updateProfile();
   const duplicate=e.code==='23505';
-  msg(duplicate?'Такой ник уже зарегистрирован с другого устройства. Для восстановления прежнего рейтинга нужна исходная игровая сессия.':offlineMessage(e.message||'ошибка сети'));
+  msg(duplicate?'Этот ник уже закреплён за другой игровой сессией. Не удаляй игру и не меняй ник: для восстановления рейтинга может понадобиться прежняя сессия.':offlineMessage(e.message||'ошибка сети'));
   return false;
  }finally{
   busy=false;
@@ -167,7 +169,7 @@ async function show(){
  modal.hidden=false;updateProfile();
  if(!client||!user){const ok=await init();if(!ok)return}
  try{
-  const r=await limited(client.from('myau_players').select('nickname,best_score,user_id').order('best_score',{ascending:false}).order('updated_at',{ascending:true}).limit(100));
+  const r=await limited(client.from('myau_players').select('nickname,best_score,user_id').order('best_score',{ascending:false}).order('updated_at',{ascending:true}).limit(100),30000,'загрузка ТОП-100');
   if(r.error)throw r.error;
   body.replaceChildren();
   (r.data||[]).forEach((p,i)=>{
