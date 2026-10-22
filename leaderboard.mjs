@@ -25,6 +25,23 @@ const modal=$('#rank-modal'),status=$('#rank-status'),body=$('#rank-list'),place
 const headerNick=$('#header-nick'),profile=$('#rank-profile'),editButton=$('#rank-edit');
 const skipLabel=$('.rank-skip'),skip=$('#rank-skip'),saveButton=$('#rank-save'),nickInput=$('#rank-nick');
 let client=null,user=null,nick=clean(localStorage.getItem('myau-nickname')),bestSent=0,busy=false,editing=false,connecting=null,saving=false;
+let serverNick='',resyncAfterBusy=false,syncTimer=null;
+function markPending(){
+ if(!nick||localStorage.getItem('myau-rank-choice')==='skip')return;
+ localStorage.setItem('myau-rank-pending','yes');
+ setPlace('…');
+ updateProfile();
+}
+function scheduleSync(delay=1200){
+ if(!nick||localStorage.getItem('myau-rank-choice')==='skip')return;
+ markPending();
+ if(syncTimer!==null)clearTimeout(syncTimer);
+ syncTimer=setTimeout(()=>{
+  syncTimer=null;
+  if(!client||!user)init();
+  else sync();
+ },delay);
+}
 function msg(s){status.textContent=s}
 function setPlace(s){place.textContent=s}
 function renderNick(){headerNick.textContent=clean(localStorage.getItem('myau-nickname'))||'Гость'}
@@ -62,8 +79,18 @@ async function connectOnce(){
   if(nick&&!localStorage.getItem('myau-nickname'))localStorage.setItem('myau-nickname',nick);
   renderNick();updateProfile();
   bestSent=Number(r.data?.best_score)||0;
-  if(nick){nickInput.value=nick;await sync()}
-  else {msg('Укажи ник, чтобы участвовать в рейтинге');setPlace('—')}
+  serverNick=clean(r.data?.nickname);
+  if(nick){
+   nickInput.value=nick;
+   if(localStorage.getItem('myau-rank-choice')==='skip'){
+    msg('Рейтинг открыт в режиме гостя');
+   }else if(!r.data||score()>bestSent||nick!==serverNick||localStorage.getItem('myau-rank-pending')==='yes'){
+    await sync();
+   }else{
+    msg('Ник и рекорд сохранены в мировом рейтинге');
+    await refreshPlace(bestSent);
+   }
+  }else {msg('Укажи ник, чтобы участвовать в рейтинге');setPlace('—')}
   return true;
  }catch(e){
   client=null;user=null;setPlace('—');
@@ -76,31 +103,63 @@ async function init(){
  connecting=connectOnce();
  try{return await connecting}finally{connecting=null}
 }
-async function sync(){
- if(!client||!user||!nick||busy)return false;
- busy=true;
+async function refreshPlace(record){
  try{
-  const best=Math.max(score(),bestSent);
-  const r=await limited(client.from('myau_players').upsert({user_id:user.id,nickname:nick,best_score:best},{onConflict:'user_id'}));
-  if(r.error)throw r.error;
-  bestSent=best;
+  const ahead=await limited(client.from('myau_players').select('user_id',{count:'exact',head:true}).gt('best_score',record));
+  if(ahead.error)throw ahead.error;
+  // Do not display a stale placement while a newer local record is waiting.
+  if(score()>bestSent||localStorage.getItem('myau-rank-pending')==='yes'){setPlace('…');return}
+  setPlace('#'+((ahead.count||0)+1));
+ }catch{
+  setPlace('—');
+  msg('Рекорд сохранён в мировом ТОПе. Место временно недоступно.');
+ }
+}
+async function sync(){
+ if(!client||!user||!nick||localStorage.getItem('myau-rank-choice')==='skip')return false;
+ // A score can improve while an earlier network request is still in flight.
+ // Never drop that update: queue it and publish the latest score afterward.
+ if(busy){resyncAfterBusy=true;markPending();return false}
+ busy=true;
+ let published=false,moreNeeded=false;
+ try{
+  for(let attempt=0;attempt<5;attempt++){
+   resyncAfterBusy=false;
+   const sendingNick=nick;
+   const best=Math.max(score(),bestSent);
+   // Request the actual stored row: 2xx alone is not proof that this score was saved.
+   const r=await limited(client.from('myau_players')
+    .upsert({user_id:user.id,nickname:sendingNick,best_score:best},{onConflict:'user_id'})
+    .select('user_id,nickname,best_score').single());
+   if(r.error)throw r.error;
+   const confirmed=Number(r.data?.best_score);
+   if(r.data?.user_id!==user.id||r.data?.nickname!==sendingNick||
+      !Number.isFinite(confirmed)||confirmed<best){
+    throw new Error('сервер не подтвердил сохранение рекорда');
+   }
+   bestSent=Math.max(bestSent,confirmed);
+   serverNick=sendingNick;
+   if(score()<=bestSent&&nick===sendingNick&&!resyncAfterBusy){published=true;break}
+  }
+  if(!published){moreNeeded=true;markPending();return false}
   localStorage.removeItem('myau-rank-pending');
   localStorage.setItem('myau-rank-choice','joined');
   editing=false;updateProfile();
-  msg('Ник и рекорд сохранены в мировом рейтинге');
-  try{
-   const ahead=await limited(client.from('myau_players').select('user_id',{count:'exact',head:true}).gt('best_score',best));
-   if(ahead.error)throw ahead.error;
-   setPlace('#'+((ahead.count||0)+1));
-  }catch{setPlace('—');msg('Ник сохранён в мировом ТОПе. Место временно недоступно.')}
+  msg('Ник и рекорд подтверждены сервером мирового ТОПа');
+  await refreshPlace(bestSent);
   return true;
  }catch(e){
-  localStorage.setItem('myau-rank-pending','yes');
-  setPlace('—');editing=true;updateProfile();
+  markPending();setPlace('—');editing=true;updateProfile();
   const duplicate=e.code==='23505';
-  msg(duplicate?'Этот ник уже занят. Выбери другой.':offlineMessage(e.message||'ошибка сети'));
+  msg(duplicate?'Такой ник уже зарегистрирован с другого устройства. Для восстановления прежнего рейтинга нужна исходная игровая сессия.':offlineMessage(e.message||'ошибка сети'));
   return false;
- }finally{busy=false}
+ }finally{
+  busy=false;
+  // The score may change during the confirmation/rank request too.
+  if(moreNeeded||(published&&(score()>bestSent||nick!==serverNick||resyncAfterBusy))){
+   scheduleSync(900);
+  }
+ }
 }
 async function show(){
  modal.hidden=false;updateProfile();
@@ -154,8 +213,23 @@ saveButton.addEventListener('click',async()=>{
   if(localStorage.getItem('myau-rank-pending')!=='yes')await show();
  }finally{saving=false;saveButton.disabled=skip.checked}
 });
-window.addEventListener('myau-best-updated',()=>{if(client&&nick)sync()});
-window.addEventListener('online',()=>{if(!client||!user)init();else if(nick)sync()});
+window.addEventListener('myau-best-updated',()=>{if(nick)scheduleSync(1200)});
+window.addEventListener('online',()=>{
+ if(nick&&localStorage.getItem('myau-rank-choice')!=='skip'){
+  if(!client||!user)init();else sync();
+ }
+});
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden&&localStorage.getItem('myau-rank-pending')==='yes'){
+  if(!client||!user)init();else sync();
+ }
+});
+// Retry pending records even when a phone silently reconnects without an online event.
+setInterval(()=>{
+ if(!document.hidden&&localStorage.getItem('myau-rank-pending')==='yes'&&nick){
+  if(!client||!user)init();else sync();
+ }
+},30000);
 if(nick&&localStorage.getItem('myau-rank-choice')!=='skip'){
  nickInput.value=nick;init();
 }else if(localStorage.getItem('myau-rank-choice')==='skip'){
