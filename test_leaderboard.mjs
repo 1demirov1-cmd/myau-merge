@@ -126,6 +126,7 @@ test('missing server confirmation never marks a high score as published',async()
  vm.runInContext('createClient = fakeFactory',app.context);
  app.el('#rank-nick').value='Сигма';
  await app.el('#rank-save').fire('click');
+ await sleep(25);
  assert.equal(app.storage.get('myau-rank-pending'),'yes');
  assert.equal(app.el('#rank-place').textContent,'—');
  assert.match(app.el('#rank-status').textContent,/не подтвердил/);
@@ -161,4 +162,40 @@ test('temporary authentication error must never replace the previous anonymous a
 test('production ranking SDK is bundled locally, not loaded from esm.sh',()=>{
  assert.match(source,/import\('\.\/vendor\/supabase\.mjs'\)/);
  assert.doesNotMatch(source,/https:\/\/esm\.sh\//);
+});
+
+test('previous world TOP is visible offline with a manual retry control',async()=>{
+ const rows=[{nickname:'Сигма',best_score:14364,user_id:'id1'},
+             {nickname:'Киса',best_score:12988,user_id:'id2'}];
+ const app=loadRanking({
+  'myau-last-world-top-v1':JSON.stringify({at:Date.now(),rows}),
+  'myau-rank-reset-v1':'done'
+ });
+ await app.el('#rank-open').fire('click');
+ assert.equal(app.el('#rank-retry').hidden,false);
+ assert.match(app.el('#rank-status').textContent,/Не удалось подключить рейтинг/);
+ assert.equal(app.storage.has('myau-last-world-top-v1'),true);
+});
+
+test('mobile auth client avoids navigator.locks while retaining stored user session',async()=>{
+ const app=loadRanking({
+  'myau-nickname':'Сигма',
+  'myau-rank-choice':'joined',
+  'myau-rank-pending':'yes',
+  'myau-rank-reset-v1':'done',
+  'meow-best':'14364',
+  'myau-rank-user-id':'test-user'
+ });
+ await sleep(0);
+ let opts;
+ app.context.fakeFactory=(_url,_key,options)=>{
+  opts=options;
+  return fakeClient({writes:[]});
+ };
+ vm.runInContext('createClient = fakeFactory',app.context);
+ app.windowEvents.get('online')();
+ await sleep(40);
+ assert.equal(typeof opts.auth.lock,'function');
+ assert.equal(app.storage.get('myau-rank-user-id'),'test-user');
+ assert.equal(app.storage.get('myau-rank-pending'),undefined);
 });
