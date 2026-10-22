@@ -130,3 +130,33 @@ test('missing server confirmation never marks a high score as published',async()
  assert.equal(app.el('#rank-place').textContent,'—');
  assert.match(app.el('#rank-status').textContent,/не подтвердил/);
 });
+
+test('temporary authentication error must never replace the previous anonymous account',async()=>{
+ const app=loadRanking({
+  'myau-nickname':'Сигма',
+  'myau-rank-choice':'joined',
+  'myau-rank-pending':'yes',
+  'myau-rank-reset-v1':'done',
+  'meow-best':'14364'
+ });
+ let newAnonymousSignups=0;
+ app.context.fakeFactory=()=>({
+  auth:{
+   getSession:async()=>({data:{session:null},error:new Error('token refresh timed out')}),
+   signInAnonymously:async()=>{newAnonymousSignups++;return {error:null,data:{session:{user:{id:'wrong-new-id'}}}};}
+  }
+ });
+ vm.runInContext('createClient = fakeFactory',app.context);
+ app.windowEvents.get('online')();
+ await sleep(35);
+ assert.equal(newAnonymousSignups,0,'must not replace the existing account on network failure');
+ assert.equal(app.storage.get('myau-nickname'),'Сигма');
+ assert.equal(app.storage.get('meow-best'),'14364');
+ assert.equal(app.storage.get('myau-rank-pending'),'yes');
+ assert.match(app.el('#rank-status').textContent,/token refresh timed out/);
+});
+
+test('production ranking SDK is bundled locally, not loaded from esm.sh',()=>{
+ assert.match(source,/import\('\.\/vendor\/supabase\.mjs'\)/);
+ assert.doesNotMatch(source,/https:\/\/esm\.sh\//);
+});
