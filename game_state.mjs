@@ -2,7 +2,7 @@
 export const SAVE_VERSION = 1;
 const BALL_FIELDS=['id','level','r','x','y','vx','vy','angle','spin','born','lock','kind','materializeUntil','mutationSettle'];
 const WORLD_FIELDS=['width','height','gravity','score','time','nextId','danger','over','won','bossProduced','murUntil','bond'];
-const UI_FIELDS=['state','pausedFrom','current','next','currentMutation','nextMutation','throwCount','highest','helpRemaining','aim','lastDrop','seenMerge','finalClock','winCats','announcedMutations'];
+const UI_FIELDS=['state','pausedFrom','current','next','currentMutation','nextMutation','throwCount','highest','helpRemaining','shakeUsed','aim','lastDrop','seenMerge','finalClock','winCats','announcedMutations'];
 const MUT_TYPES=new Set(['ghost','heavy','maniac','ninja','magnet']);
 const PHASES=new Set(['armed','active','spent']);
 const validNumber=v=>typeof v==='number'&&Number.isFinite(v);
@@ -72,6 +72,7 @@ export function restoreSnapshot(snapshot,makeWorld) {
       (!Array.isArray(u.announcedMutations)||u.announcedMutations.length>6||
        u.announcedMutations.some(type=>!MUT_TYPES.has(type))))||
     !Number.isInteger(snapshot.rngState)||snapshot.rngState<0||snapshot.rngState>0xffffffff)return null;
+  if(u.shakeUsed!==undefined&&typeof u.shakeUsed!=='boolean')return null;
   for(const k of ['currentMutation','nextMutation']){
     if(u[k]!==null&&!MUT_TYPES.has(u[k]))return null;
   }
@@ -80,7 +81,7 @@ export function restoreSnapshot(snapshot,makeWorld) {
   world.balls=w.balls.map(b=>({...copy(b,BALL_FIELDS),
     ...(b.mutation?{mutation:copy(b.mutation,['type','phase','remaining'])}:{})}));
   world.events=[];world.mutationPulses=[];
-  const ui={...copy(u,UI_FIELDS),winCats:u.winCats.map(b=>({...b})),
+  const ui={...copy(u,UI_FIELDS),shakeUsed:u.shakeUsed===true,winCats:u.winCats.map(b=>({...b})),
     announcedMutations:[...(u.announcedMutations??[])]};
   return {world,ui,rngState:snapshot.rngState>>>0};
 }

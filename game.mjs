@@ -2,6 +2,7 @@ import {World,RADII,RATES} from './physics.mjs?v=16';
 import {rollMutation} from './mutations.mjs?v=6';
 import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave} from './game_state.mjs?v=3';
 import {getMagnetPairs} from './mutation_effects.mjs?v=9';
+import {shakeBalls} from './shake.mjs?v=1';
 const $=s=>document.querySelector(s), canvas=$('#game'), ctx=canvas.getContext('2d');
 const NAMES=['Крошка','Бананчик','Серьёзный','Улыбашка','Батя','Гига-кот','Мегачад','Абсолют','Демирчад'];
 const BOSS_LEVEL=NAMES.length-1;
@@ -11,6 +12,7 @@ const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let best=Math.max(0,Number(read('meow-best',0))||0), soundEnabled=read('meow-sound',true)!==false;
 let world=new World(), state='intro', aim=180, current=0, next=0, highest=0, lastDrop=-10, dragging=false, activePointer=null, helpRemaining=3, helpMode=false;
 let throwCount=0,currentMutation=null,nextMutation=null,undoSnapshot=null,lastSavedTime=0,rngState=0x9e3779b9,announcedMutations=new Set();
+let shakeUsed=false;
 let particles=[],rings=[],points=[],mutationLabels=[],lastTime=0,accumulator=0,shake=0,lastScore=-1,toastTimer,seenMerge=false,finalClock=0,winCats=[],pausedFrom='playing';
 const coupleArt=new Image();coupleArt.src='assets/mur-pair.webp?v=5';
 const sprites=[],rawImages=[],W=360,H=650;
@@ -97,11 +99,18 @@ function meow(level,quiet=false){
 function hush(){for(const v of voices){try{v.s.stop()}catch{}}voices=[];}
 function updateSound(){const b=$('#sound');b.textContent=soundEnabled?'♪':'♩';b.setAttribute('aria-label',soundEnabled?'Выключить звук':'Включить звук');b.style.opacity=soundEnabled?'1':'.45';}
 updateSound();$('#best').textContent=best;
+function refreshShake(){
+ const b=$('#shake');
+ const unavailable=shakeUsed||state!=='playing'||!!world.bond||world.balls.length===0;
+ b.disabled=unavailable;
+ b.classList.toggle('spent',shakeUsed);
+}
 function refreshHelp(){
  const b=$('#paw');b.disabled=helpRemaining<=0||state!=='playing'||!!world.bond;
  b.setAttribute('aria-pressed',helpMode?'true':'false');
  b.setAttribute('aria-label','Лапа помощи: осталось '+helpRemaining);
  $('#paw-count').textContent=helpRemaining;
+ refreshShake();
 }
 function chooseHelpCat(clientX,clientY){
  const rect=canvas.getBoundingClientRect(),x=(clientX-rect.left)/rect.width*W,y=(clientY-rect.top)/rect.height*H;
@@ -120,6 +129,17 @@ $('#paw').onclick=()=>{
  setHint(helpMode?'<span class="hint-dot"></span> 🐾 Коснись кота, которого хочешь убрать':'<span class="hint-dot"></span> Веди пальцем и отпусти кота');
 };
 
+$('#shake').addEventListener('click',()=>{
+ if(shakeUsed||state!=='playing'||world.bond||world.balls.length===0)return;
+ if(!shakeBalls(world,gameRandom))return;
+ shakeUsed=true;
+ undoSnapshot=null; // An earlier throw cannot be undone to regain the one-use ability.
+ helpMode=false;
+ shake=Math.max(shake,7.5);
+ refreshHelp();
+ refreshUndo();
+ persist();
+});
 function loadSprite(i){return new Promise(resolve=>{const im=new Image();rawImages[i]=im;im.onload=()=>{
   const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(im,0,0);
   // Chroma-key the black source background at render time; source textures stay intact.
@@ -154,10 +174,10 @@ function newSeed(){try{return crypto.getRandomValues(new Uint32Array(1))[0]||1}c
 function randomLevel(){const x=gameRandom();return x<.55?0:x<.89?1:2;}
 function updateNext(){const badge=$('#next-mutation');const meta=nextMutation?MUTATION_UI[nextMutation]:null;$('#next-cat').src=sprites[next]?sprites[next].toDataURL('image/png'):`assets/cat-${next}.webp`;$('#next-cat').alt=`Следующий: ${NAMES[next]}${meta?' · '+meta.label:''}`;badge.hidden=!meta;badge.textContent=meta?meta.symbol:'';badge.title=meta?meta.label+' — '+meta.detail:'';badge.setAttribute('aria-label',meta?meta.label+' — '+meta.detail:'Особая способность');badge.style.borderColor=meta?meta.color:'';}
 function refreshUndo(){$('#undo').disabled=!(state==='playing'&&undoSnapshot&&!world.bond);}
-function snapshot(){return captureSnapshot(world,{state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats,announcedMutations:[...announcedMutations]},rngState)}
+function snapshot(){return captureSnapshot(world,{state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,shakeUsed,aim,lastDrop,seenMerge,finalClock,winCats,announcedMutations:[...announcedMutations]},rngState)}
 function persist(){if(!['playing','paused','finale'].includes(state))return;try{localStorage.setItem('myau-game-v1',encodeSave(snapshot(),undoSnapshot));lastSavedTime=world.time}catch{}}
 function clearSaved(){try{localStorage.removeItem('myau-game-v1')}catch{}}
-function applySnapshot(raw){const loaded=restoreSnapshot(raw,()=>new World({random:gameRandom}));if(!loaded)return false;world=loaded.world;({state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,aim,lastDrop,seenMerge,finalClock,winCats}=loaded.ui);rngState=loaded.rngState;announcedMutations=new Set(loaded.ui.announcedMutations??[]);particles=[];rings=[];points=[];mutationLabels=[];shake=0;accumulator=0;lastTime=0;lastScore=-1;world.events.length=0;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();return true;}
+function applySnapshot(raw){const loaded=restoreSnapshot(raw,()=>new World({random:gameRandom}));if(!loaded)return false;world=loaded.world;({state,pausedFrom,current,next,currentMutation,nextMutation,throwCount,highest,helpRemaining,shakeUsed,aim,lastDrop,seenMerge,finalClock,winCats}=loaded.ui);rngState=loaded.rngState;announcedMutations=new Set(loaded.ui.announcedMutations??[]);particles=[];rings=[];points=[];mutationLabels=[];shake=0;accumulator=0;lastTime=0;lastScore=-1;world.events.length=0;$('#level-label').textContent=`${highest+1} / ${NAMES.length}`;rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();return true;}
 const MUTATION_UI={ghost:{symbol:'◌',color:'#a3c5ef',label:'Кот-призрак',detail:'1,5 с проходит сквозь котов'},heavy:{symbol:'▣',color:'#ffd08a',label:'Кот-жиробас',detail:'В 5 раз тяжелее обычного'},maniac:{symbol:'🔪',color:'#ff8097',label:'Кот-маньяк',detail:'При приземлении убирает одного кота другого уровня'},ninja:{symbol:'✦',color:'#c2a8ff',label:'Кот-ниндзя',detail:'Прыгает после приземления'},magnet:{symbol:'⊕',color:'#ffa5cf',label:'Котомагнит',detail:'Соединяет ближайших одинаковых котов внутри магнитного поля'},vampire:{symbol:'🦇',color:'#e85676',label:'Кот-вампир',detail:'При первом касании отнимает два уровня; коты 1–2 уровня исчезают'}};
 $('#next-mutation').onclick=()=>{const m=nextMutation?MUTATION_UI[nextMutation]:null;if(m)toast(m.label+' · '+m.detail);};
 function updateHUD(){if(lastScore!==world.score){lastScore=world.score;$('#score').textContent=world.score;if(world.score>best){best=world.score;$('#best').textContent=best;save('meow-best',best);window.dispatchEvent(new Event('myau-best-updated'));}}}
@@ -165,7 +185,7 @@ function setHighest(level){if(level<=highest)return;highest=level;$('#level-labe
 function toast(text){const el=$('#toast');el.textContent=text;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1900);}
 // Optional presentation: removing the hint must never stop game physics.
 function setHint(html){const hint=document.querySelector('#hint');if(hint)hint.innerHTML=html;}
-function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;announcedMutations=new Set();undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];mutationLabels=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;setHint('<span class="hint-dot"></span> Веди пальцем и отпусти кота');rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio(true);}
+function start(){rngState=newSeed();world=new World({random:gameRandom});state='playing';finalClock=0;winCats=[];pausedFrom='playing';helpRemaining=3;shakeUsed=false;helpMode=false;current=0;next=0;currentMutation=null;nextMutation=null;throwCount=0;announcedMutations=new Set();undoSnapshot=null;highest=0;aim=180;lastDrop=-10;particles=[];rings=[];points=[];mutationLabels=[];seenMerge=false;accumulator=0;lastTime=0;lastScore=-1;$('#overlay').hidden=true;$('#level-label').textContent=`1 / ${NAMES.length}`;setHint('<span class="hint-dot"></span> Веди пальцем и отпусти кота');rebuildTrack();updateNext();refreshHelp();refreshUndo();updateHUD();persist();unlockAudio(true);}
 $('#start').addEventListener('click',start);
 function undoDrop(){if(state!=='playing'||!undoSnapshot||world.bond)return;const before=undoSnapshot;const previouslyAnnounced=[...announcedMutations];undoSnapshot=null;if(!applySnapshot(before))return;for(const type of previouslyAnnounced)announcedMutations.add(type);state='playing';refreshUndo();toast('Последний бросок отменён');persist();}
 $('#undo').onclick=undoDrop;
@@ -195,7 +215,7 @@ function drop(){
  if(currentMutation&&world.activeMutationCount()>=3)currentMutation=null;
  nextMutation=rollMutation({level:next,throwNumber:throwCount+2,balls:world.balls,random:gameRandom});
  aim=Math.max(RADII[current]+2,Math.min(W-RADII[current]-2,aim));
- updateNext();refreshUndo();persist();
+ updateNext();refreshUndo();refreshShake();persist();
 }
 function aimAt(clientX){const r=canvas.getBoundingClientRect();aim=Math.max(RADII[current]+2,Math.min(W-RADII[current]-2,(clientX-r.left)/r.width*W));}
 canvas.addEventListener('pointerdown',e=>{if(state!=='playing'||world.bond||activePointer!==null||!e.isPrimary)return;e.preventDefault();if(helpMode){chooseHelpCat(e.clientX,e.clientY);return;}activePointer=e.pointerId;dragging=true;aimAt(e.clientX);canvas.setPointerCapture(e.pointerId);unlockAudio(true);});

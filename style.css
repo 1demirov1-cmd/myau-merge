@@ -109,3 +109,10 @@
 
 /* Mobile: instruction already appears above the dropping cat */
 @media(max-width:800px){.game-shell>.hint{display:none!important}}
+
+/* Small, one-use portrait button; no visible text. */
+.shake-btn{padding:3px;flex:0 0 auto;border-color:#715984;background:#251d30;overflow:hidden}
+.shake-btn img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;pointer-events:none}
+.shake-btn:not(:disabled):active{transform:scale(.93)}
+.shake-btn.spent{opacity:.24;filter:grayscale(1);cursor:not-allowed}
+@media(max-width:390px){.topbar .actions{gap:3px}.topbar .actions .icon-btn{width:30px;height:34px}.topbar .brand{font-size:20px}}

@@ -4,7 +4,7 @@ import {captureSnapshot,restoreSnapshot,encodeSave,decodeSave,SAVE_VERSION} from
 const mk=()=>new World({random:()=>.4});
 const ui={state:'playing',pausedFrom:'playing',current:0,next:1,
   currentMutation:null,nextMutation:'ghost',throwCount:4,highest:2,
-  helpRemaining:3,announcedMutations:[],aim:180,lastDrop:.48,seenMerge:true,finalClock:0,winCats:[]};
+  helpRemaining:3,shakeUsed:false,announcedMutations:[],aim:180,lastDrop:.48,seenMerge:true,finalClock:0,winCats:[]};
 const w=mk();w.add(0,100,100,{mutationType:'maniac'});w.add(1,200,600);
 w.balls[0].mutation.phase='armed';w.balls[0].mutationSettle=.17;
 w.time=.55;w.score=24;
@@ -30,12 +30,14 @@ for(const caseFn of [
   b=>b.world.balls[0].id=b.world.balls[1].id,
   b=>b.world.balls[0].level=8,
   b=>b.ui.current=9,
+  b=>b.ui.shakeUsed='false',
   b=>b.ui.currentMutation='invalid',
   b=>b.rngState=-1,
   b=>b.world.nextId=1,
   b=>b.ui.state='over',
 ]){assert.equal(restoreSnapshot(corrupted(caseFn),mk),null);}
 const oldSave=structuredClone(before);
+delete oldSave.ui.shakeUsed;
 oldSave.world.balls[0].mutation.type='spring';
 oldSave.ui.currentMutation='spring';oldSave.ui.nextMutation='spring';
 oldSave.ui.announcedMutations=['spring'];
@@ -45,6 +47,7 @@ assert.equal(migrated.world.balls[0].mutation,undefined);
 assert.equal(migrated.world.balls[0].level,0);
 assert.equal(migrated.ui.currentMutation,null);
 assert.equal(migrated.ui.nextMutation,null);
+assert.equal(migrated.ui.shakeUsed,false);
 assert.deepEqual(migrated.ui.announcedMutations,[]);
 assert.equal(decodeSave('not-json',mk),null);
 assert.equal(decodeSave('{"version":2}',mk),null);
